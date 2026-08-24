@@ -109,3 +109,29 @@ export async function convertFaith(slotIndex: number, targetNation: string): Pro
 export async function courtFactionSupport(slotIndex: number, faction: string): Promise<ActionResponse> {
   return authedFetch(`/geopolitics/${slotIndex}/court-faction`, { method: "POST", body: JSON.stringify({ faction }) });
 }
+
+// --- Economy (Section 7) ---
+
+export async function buyProperty(slotIndex: number, typeId: string): Promise<ActionResponse> {
+  return authedFetch(`/economy/${slotIndex}/buy-property`, { method: "POST", body: JSON.stringify({ typeId }) });
+}
+
+export async function takeLoan(slotIndex: number, amount: number): Promise<ActionResponse> {
+  return authedFetch(`/economy/${slotIndex}/loan`, { method: "POST", body: JSON.stringify({ amount }) });
+}
+
+export async function repayDebt(slotIndex: number, amount: number): Promise<ActionResponse> {
+  return authedFetch(`/economy/${slotIndex}/repay-debt`, { method: "POST", body: JSON.stringify({ amount }) });
+}
+
+export async function attemptVenture(slotIndex: number, stake: number): Promise<ActionResponse> {
+  return authedFetch(`/economy/${slotIndex}/venture`, { method: "POST", body: JSON.stringify({ stake }) });
+}
+
+export async function giftToChild(slotIndex: number, childName: string, amount: number): Promise<ActionResponse> {
+  return authedFetch(`/economy/${slotIndex}/gift`, { method: "POST", body: JSON.stringify({ target: "child", childName, amount }) });
+}
+
+export async function giftToSpouse(slotIndex: number, amount: number): Promise<ActionResponse> {
+  return authedFetch(`/economy/${slotIndex}/gift`, { method: "POST", body: JSON.stringify({ target: "spouse", amount }) });
+}

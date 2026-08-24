@@ -1,5 +1,5 @@
 import type { Character, Dynasty } from "@dynasty/shared";
-import { EPOCH_BY_ID, TRACK_SETS } from "@dynasty/shared";
+import { EPOCH_BY_ID, PROPERTY_TIER_BY_ID, TRACK_SETS } from "@dynasty/shared";
 import { rollMortality } from "./mortality.js";
 import { tickTrackMechanic } from "./tracks.js";
 import { tickGeopolitics } from "./geopolitics.js";
@@ -49,8 +49,11 @@ export function advanceYear(character: Character, dynasty: Dynasty): TurnResult 
     c.stats.wealth = clamp(c.stats.wealth + salary, 0, 999);
     log.push(`Earned ${salary} ${EPOCH_BY_ID[c.epochId].currency} as a ${track.titles[c.trackTier] ?? "ruler"}.`);
   }
+  // Recurring yearly income per property tier (Section 7) - previously a
+  // flat +5 regardless of tier, since PROPERTY_TIERS didn't exist yet.
   for (const p of c.properties) {
-    c.stats.wealth = clamp(c.stats.wealth + 5, 0, 999);
+    const income = PROPERTY_TIER_BY_ID[p.typeId]?.yearlyIncome ?? 5;
+    c.stats.wealth = clamp(c.stats.wealth + income, 0, 999);
   }
   if (c.stats.health < 90 && c.age < 60) c.stats.health = clamp(c.stats.health + 1);
   if (c.debt) {

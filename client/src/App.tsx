@@ -9,12 +9,13 @@ import { GameOverScreen } from "./screens/GameOverScreen.js";
 import { MenuScreen } from "./screens/MenuScreen.js";
 import { FamilyScreen } from "./screens/FamilyScreen.js";
 import { DynastyActionsScreen } from "./screens/DynastyActionsScreen.js";
+import { EstateScreen } from "./screens/EstateScreen.js";
 import { S } from "./theme.js";
 
 // Minimal screen router. Matches the original's screen list (Section 3) in
 // spirit: the golden path (loading -> login -> slots -> create -> play ->
-// gameover -> back to play) plus the Menu hub with Family and Dynasty
-// Actions. The rest of the original's secondary screens (estate, almanac,
+// gameover -> back to play) plus the Menu hub with Family, Dynasty Actions,
+// and Estate. The rest of the original's secondary screens (almanac,
 // records, ticker, tree, codex, settings, timeline, chronicle, biography)
 // are not built yet.
 type Screen =
@@ -24,7 +25,8 @@ type Screen =
   | { name: "gameover"; slotIndex: number }
   | { name: "menu"; slotIndex: number }
   | { name: "family"; slotIndex: number }
-  | { name: "dynastyActions"; slotIndex: number };
+  | { name: "dynastyActions"; slotIndex: number }
+  | { name: "estate"; slotIndex: number };
 
 export function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
@@ -65,6 +67,7 @@ export function App() {
         <MenuScreen
           onFamily={() => setScreen({ name: "family", slotIndex: screen.slotIndex })}
           onDynastyActions={() => setScreen({ name: "dynastyActions", slotIndex: screen.slotIndex })}
+          onEstate={() => setScreen({ name: "estate", slotIndex: screen.slotIndex })}
           onBack={() => setScreen({ name: "play", slotIndex: screen.slotIndex })}
         />
       );
@@ -72,5 +75,7 @@ export function App() {
       return <FamilyScreen slotIndex={screen.slotIndex} onBack={() => setScreen({ name: "menu", slotIndex: screen.slotIndex })} />;
     case "dynastyActions":
       return <DynastyActionsScreen slotIndex={screen.slotIndex} onBack={() => setScreen({ name: "menu", slotIndex: screen.slotIndex })} />;
+    case "estate":
+      return <EstateScreen slotIndex={screen.slotIndex} onBack={() => setScreen({ name: "menu", slotIndex: screen.slotIndex })} />;
   }
 }

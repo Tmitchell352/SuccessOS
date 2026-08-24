@@ -1,8 +1,26 @@
 import { useEffect, useState } from "react";
 import type { DynastySave } from "@dynasty/shared";
-import { PROPERTY_TIERS } from "@dynasty/shared";
-import { attemptVenture, buyProperty, getSlot, giftToChild, giftToSpouse, repayDebt, takeLoan } from "../api.js";
+import { PROPERTY_TIERS, computeInheritanceFriction } from "@dynasty/shared";
+import {
+  attemptVenture,
+  buildFamilySeat,
+  buyProperty,
+  getSlot,
+  giftToChild,
+  giftToSpouse,
+  repayDebt,
+  setWillStyle,
+  takeLoan,
+  type WillStyle,
+} from "../api.js";
 import { S } from "../theme.js";
+
+const WILL_STYLE_LABELS: Record<WillStyle, string> = {
+  default: "No will (default)",
+  equal: "Equal shares",
+  eldestFavored: "Favor the eldest child",
+  youngestFavored: "Favor the youngest child",
+};
 
 // Section 3's "estate" secondary screen: property, loans, ventures, and
 // gifting (Section 7).
@@ -106,6 +124,28 @@ export function EstateScreen({ slotIndex, onBack }: { slotIndex: number; onBack:
               Gift to {child.name}
             </button>
           ))}
+      </div>
+
+      <div style={S.card}>
+        <h2 style={S.h2}>Legacy Planning</h2>
+        <p style={{ fontSize: "0.9rem" }}>
+          Current inheritance friction: <strong>{Math.round(computeInheritanceFriction(c.willStyle, save.dynasty.familySeat) * 100)}%</strong> - drawing up
+          a will and building a family seat both lower it (see the Choose an Heir screen for the exact preview).
+        </p>
+        <select style={S.select} value={c.willStyle} disabled={busy} onChange={(e) => run(() => setWillStyle(slotIndex, e.target.value as WillStyle))}>
+          {(Object.keys(WILL_STYLE_LABELS) as WillStyle[]).map((style) => (
+            <option key={style} value={style}>
+              {WILL_STYLE_LABELS[style]}
+            </option>
+          ))}
+        </select>
+        {save.dynasty.familySeat ? (
+          <p>The dynasty already has a family seat.</p>
+        ) : (
+          <button style={S.button} disabled={busy} onClick={() => run(() => buildFamilySeat(slotIndex))}>
+            Build a Family Seat (400)
+          </button>
+        )}
       </div>
 
       <div style={{ maxWidth: "560px", margin: "0 auto" }}>

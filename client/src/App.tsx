@@ -15,14 +15,15 @@ import { TickerScreen } from "./screens/TickerScreen.js";
 import { AlmanacScreen } from "./screens/AlmanacScreen.js";
 import { RecordsScreen } from "./screens/RecordsScreen.js";
 import { TreeScreen } from "./screens/TreeScreen.js";
+import { TimelineScreen } from "./screens/TimelineScreen.js";
+import { SettingsScreen } from "./screens/SettingsScreen.js";
 import { S } from "./theme.js";
 
 // Minimal screen router. Matches the original's screen list (Section 3) in
 // spirit: the golden path (loading -> login -> slots -> create -> play ->
-// gameover -> back to play) plus the Menu hub with Family, Dynasty Actions,
-// Estate, Codex, History, Almanac, Records, and Family Tree. Timeline and
-// Settings still aren't built (Timeline overlaps heavily with History; there's
-// no player-configurable app state for Settings to expose yet).
+// gameover -> back to play) plus the Menu hub with all ten of Section 3's
+// secondary screens: Family, Dynasty Actions, Estate, Codex, History,
+// Almanac, Records, Family Tree, Timeline, and Settings.
 type Screen =
   | { name: "slots" }
   | { name: "create"; slotIndex: number }
@@ -36,7 +37,9 @@ type Screen =
   | { name: "ticker"; slotIndex: number }
   | { name: "almanac"; slotIndex: number }
   | { name: "records"; slotIndex: number }
-  | { name: "tree"; slotIndex: number };
+  | { name: "tree"; slotIndex: number }
+  | { name: "timeline"; slotIndex: number }
+  | { name: "settings"; slotIndex: number };
 
 export function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
@@ -83,6 +86,8 @@ export function App() {
           onAlmanac={() => setScreen({ name: "almanac", slotIndex: screen.slotIndex })}
           onRecords={() => setScreen({ name: "records", slotIndex: screen.slotIndex })}
           onTree={() => setScreen({ name: "tree", slotIndex: screen.slotIndex })}
+          onTimeline={() => setScreen({ name: "timeline", slotIndex: screen.slotIndex })}
+          onSettings={() => setScreen({ name: "settings", slotIndex: screen.slotIndex })}
           onBack={() => setScreen({ name: "play", slotIndex: screen.slotIndex })}
         />
       );
@@ -102,5 +107,9 @@ export function App() {
       return <RecordsScreen slotIndex={screen.slotIndex} onBack={() => setScreen({ name: "menu", slotIndex: screen.slotIndex })} />;
     case "tree":
       return <TreeScreen slotIndex={screen.slotIndex} onBack={() => setScreen({ name: "menu", slotIndex: screen.slotIndex })} />;
+    case "timeline":
+      return <TimelineScreen slotIndex={screen.slotIndex} onBack={() => setScreen({ name: "menu", slotIndex: screen.slotIndex })} />;
+    case "settings":
+      return <SettingsScreen slotIndex={screen.slotIndex} onBack={() => setScreen({ name: "menu", slotIndex: screen.slotIndex })} />;
   }
 }

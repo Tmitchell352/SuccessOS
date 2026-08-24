@@ -137,6 +137,41 @@ dynastiesRouter.get("/:slotIndex/chronicle", async (req, res) => {
   res.json({ chronicle });
 });
 
+// POST /dynasties/:slotIndex/settings - dynasty-level preferences that
+// aren't tied to a living character, so (unlike willStyle/familySeat in
+// economy.ts) this works even between generations. noAiMode existed on
+// Dynasty since the first commit ("player opt-out of AI-generated story
+// turns", handoff doc's illustrative literal) with no way to ever set it -
+// dynasties were permanently stuck at the factory default of false.
+dynastiesRouter.post("/:slotIndex/settings", async (req, res) => {
+  const { userId, accessToken } = req as unknown as AuthedRequest;
+  const slotIndex = Number(req.params.slotIndex);
+  const { noAiMode } = req.body ?? {};
+  if (typeof noAiMode !== "boolean") return res.status(400).json({ error: "noAiMode (boolean) is required" });
+  const supabase = clientForToken(accessToken);
+
+  const { data, error } = await supabase
+    .from("dynasty_saves")
+    .select("dynasty")
+    .eq("user_id", userId)
+    .eq("slot_index", slotIndex)
+    .maybeSingle();
+  if (error) return res.status(500).json({ error: error.message });
+  if (!data) return res.status(404).json({ error: "No save in that slot" });
+
+  const dynasty = deserializeDynasty(data.dynasty);
+  dynasty.noAiMode = noAiMode;
+
+  const { error: saveError } = await supabase
+    .from("dynasty_saves")
+    .update({ dynasty: serializeDynasty(dynasty), updated_at: new Date().toISOString() })
+    .eq("user_id", userId)
+    .eq("slot_index", slotIndex);
+  if (saveError) return res.status(500).json({ error: saveError.message });
+
+  res.json({ dynasty });
+});
+
 // DELETE /dynasties/:slotIndex
 dynastiesRouter.delete("/:slotIndex", async (req, res) => {
   const { userId, accessToken } = req as unknown as AuthedRequest;

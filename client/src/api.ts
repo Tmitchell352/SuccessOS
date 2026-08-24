@@ -160,3 +160,19 @@ export async function giftToChild(slotIndex: number, childName: string, amount: 
 export async function giftToSpouse(slotIndex: number, amount: number): Promise<ActionResponse> {
   return authedFetch(`/economy/${slotIndex}/gift`, { method: "POST", body: JSON.stringify({ target: "spouse", amount }) });
 }
+
+export async function buildFamilySeat(slotIndex: number): Promise<ActionResponse> {
+  return authedFetch(`/economy/${slotIndex}/build-family-seat`, { method: "POST" });
+}
+
+export type WillStyle = "default" | "equal" | "eldestFavored" | "youngestFavored";
+
+export async function setWillStyle(slotIndex: number, willStyle: WillStyle): Promise<ActionResponse> {
+  return authedFetch(`/economy/${slotIndex}/set-will-style`, { method: "POST", body: JSON.stringify({ willStyle }) });
+}
+
+// --- Settings ---
+
+export async function updateSettings(slotIndex: number, noAiMode: boolean): Promise<{ dynasty: Dynasty }> {
+  return authedFetch(`/dynasties/${slotIndex}/settings`, { method: "POST", body: JSON.stringify({ noAiMode }) });
+}

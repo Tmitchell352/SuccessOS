@@ -3,7 +3,7 @@ import type { AuthedRequest } from "../middleware/auth.js";
 import { requireAuth } from "../middleware/auth.js";
 import { clientForToken } from "../supabase.js";
 import { deserializeCharacter, deserializeDynasty, serializeCharacter, serializeDynasty } from "../game/engine/persistence.js";
-import { attemptVenture, buyProperty, giftToChild, giftToSpouse, repayDebt, takeLoan } from "../game/engine/economy.js";
+import { attemptVenture, buildFamilySeat, buyProperty, giftToChild, giftToSpouse, repayDebt, setWillStyle, takeLoan } from "../game/engine/economy.js";
 
 // Explicit player-initiated economy actions (Section 7): buying property,
 // taking/repaying a loan, risky ventures, and gifting to family. Like
@@ -105,4 +105,26 @@ economyRouter.post("/:slotIndex/gift", async (req, res) => {
   const { dynasty, character } = loaded;
   const result = target === "spouse" ? giftToSpouse(character, Number(amount)) : giftToChild(character, childName, Number(amount));
   await saveAndRespond(supabase, userId, slotIndex, dynasty, character, res, result);
+});
+
+economyRouter.post("/:slotIndex/build-family-seat", async (req, res) => {
+  const { userId, accessToken } = req as unknown as AuthedRequest;
+  const slotIndex = Number(req.params.slotIndex);
+  const supabase = clientForToken(accessToken);
+  const loaded = await loadLiving(supabase, userId, slotIndex);
+  if (isError(loaded)) return res.status(loaded.status).json({ error: loaded.error });
+  const { dynasty, character } = loaded;
+  await saveAndRespond(supabase, userId, slotIndex, dynasty, character, res, buildFamilySeat(character, dynasty));
+});
+
+economyRouter.post("/:slotIndex/set-will-style", async (req, res) => {
+  const { userId, accessToken } = req as unknown as AuthedRequest;
+  const slotIndex = Number(req.params.slotIndex);
+  const { willStyle } = req.body ?? {};
+  if (!willStyle) return res.status(400).json({ error: "willStyle is required" });
+  const supabase = clientForToken(accessToken);
+  const loaded = await loadLiving(supabase, userId, slotIndex);
+  if (isError(loaded)) return res.status(loaded.status).json({ error: loaded.error });
+  const { dynasty, character } = loaded;
+  await saveAndRespond(supabase, userId, slotIndex, dynasty, character, res, setWillStyle(character, willStyle));
 });

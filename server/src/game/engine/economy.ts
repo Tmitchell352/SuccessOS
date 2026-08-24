@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { Character } from "@dynasty/shared";
+import type { Character, Dynasty, WillStyle } from "@dynasty/shared";
 import { PROPERTY_TIER_BY_ID } from "@dynasty/shared";
 
 function clamp(n: number, lo = 0, hi = 100): number {
@@ -118,4 +118,27 @@ export function giftToSpouse(c: Character, amount: number): EconomyResult {
   c.stats.wealth = clamp(c.stats.wealth - rounded, 0, 999);
   c.family.spouseBond = clamp((c.family.spouseBond ?? 50) + Math.round(rounded / 10));
   return { log: [`Gifted ${rounded} wealth to ${c.family.spouseName}, strengthening their bond.`], success: true };
+}
+
+// Inheritance planning (Section 7/8): willStyle and familySeat drive
+// computeInheritanceFriction (see economy.ts in shared/) and, for willStyle,
+// which sibling the heir starts with a rival in - but until now nothing
+// anywhere ever let the player actually set either one away from its
+// factory default, so the mechanic they feed could never move.
+const FAMILY_SEAT_COST = 400;
+export function buildFamilySeat(c: Character, dynasty: Dynasty): EconomyResult {
+  if (dynasty.familySeat) return { log: ["The dynasty already has a family seat."], success: false };
+  if (c.stats.wealth < FAMILY_SEAT_COST) return { log: [`A family seat costs ${FAMILY_SEAT_COST} wealth.`], success: false };
+  c.stats.wealth = clamp(c.stats.wealth - FAMILY_SEAT_COST, 0, 999);
+  dynasty.familySeat = true;
+  return { log: ["Built a family seat - a permanent home for the dynasty, lowering future inheritance friction."], success: true };
+}
+
+const WILL_STYLES: WillStyle[] = ["default", "equal", "eldestFavored", "youngestFavored"];
+export function setWillStyle(c: Character, willStyle: string): EconomyResult {
+  if (!WILL_STYLES.includes(willStyle as WillStyle)) {
+    return { log: [`willStyle must be one of ${WILL_STYLES.join(", ")}.`], success: false };
+  }
+  c.willStyle = willStyle as WillStyle;
+  return { log: [`Drew up a will (${willStyle}).`], success: true };
 }

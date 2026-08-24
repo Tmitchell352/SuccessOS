@@ -139,9 +139,24 @@ export function tickTrackMechanic(c: Character, dynasty: Dynasty): TrackTickResu
     }
 
     case "medical": {
-      // Difficult-case events, skill-weighted survival odds; a bonus event
-      // when a plague-like crisis is active (Section 5's table).
-      if (Math.random() < 0.25) {
+      // Difficult-case events, skill-weighted survival odds; a special,
+      // higher-stakes epidemic-response event when a plague crisis is
+      // actually active (Section 5's table) - previously this comment
+      // claimed that bonus event existed but the code never once checked
+      // dynasty.activeCrisis, so it could never actually fire.
+      if (dynasty.activeCrisis?.id === "plague" && Math.random() < 0.4) {
+        const odds = 0.25 + c.stats.skill / 130;
+        if (Math.random() < odds) {
+          c.stats.popularity = clamp(c.stats.popularity + 12);
+          c.stats.influence = clamp(c.stats.influence + 8);
+          dynasty.nationPower = clamp(dynasty.nationPower + 2, 0, 100);
+          log.push(`${c.name} led the response to the ${dynasty.activeCrisis.label.toLowerCase()}, saving many lives.`);
+        } else {
+          c.stats.health = clamp(c.stats.health - 10);
+          c.stats.popularity = clamp(c.stats.popularity - 3);
+          log.push(`Exposed themselves treating plague victims - fell ill but survived.`);
+        }
+      } else if (Math.random() < 0.25) {
         const odds = 0.3 + c.stats.skill / 150;
         if (Math.random() < odds) {
           c.stats.popularity = clamp(c.stats.popularity + 6);

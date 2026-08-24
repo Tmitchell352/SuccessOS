@@ -142,6 +142,14 @@ export function advanceYear(character: Character, dynasty: Dynasty): TurnResult 
   if (c.domestic.mentorTrust !== undefined && c.domestic.mentorTrust > 50) c.domestic.mentorTrust -= 1;
   if (c.domestic.friendBond !== undefined && c.domestic.friendBond > 50) c.domestic.friendBond -= 1;
 
+  // Criminal heat decay when not actively on the criminal track (Section 5's
+  // table: "heat meter... drifts up naturally while active. Heat decays if
+  // inactive."). tracks.ts's criminal case only ever increases heat while
+  // the character is actively on that track - previously, once they left it
+  // (via Change Career, or simply never chose it), heat just stayed frozen
+  // forever rather than actually decaying as the spec calls for.
+  if (c.trackId !== "criminal" && c.heat > 0) c.heat = clamp(c.heat - 6);
+
   // 6. Prison countdown, NPC aging, background-relatives tick.
   if (c.imprisoned) {
     c.imprisoned.yearsRemaining -= 1;

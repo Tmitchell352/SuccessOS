@@ -9,6 +9,7 @@ import { clientForToken } from "../supabase.js";
 import { deserializeCharacter, deserializeDynasty, serializeCharacter, serializeDynasty } from "../game/engine/persistence.js";
 import { newDynasty, newFoundingCharacter, toTreeRecord } from "../game/engine/factory.js";
 import { initRelations } from "../game/engine/geopolitics.js";
+import { writeChronicle } from "../game/ai/eventGenerator.js";
 
 export const dynastiesRouter = Router();
 dynastiesRouter.use(requireAuth);
@@ -103,6 +104,37 @@ dynastiesRouter.get("/:slotIndex", async (req, res) => {
   if (error) return res.status(500).json({ error: error.message });
   if (!data) return res.status(404).json({ error: "No save in that slot" });
   res.json({ slot: rowToSave(data as Row) });
+});
+
+// GET /dynasties/:slotIndex/chronicle - an on-demand narrative generator
+// (Section 9), regenerated fresh each call since it's a snapshot of the
+// dynasty's current history rather than a one-time event like a eulogy
+// (still cached until the next call overwrites it, on Dynasty.chronicleText).
+dynastiesRouter.get("/:slotIndex/chronicle", async (req, res) => {
+  const { userId, accessToken } = req as unknown as AuthedRequest;
+  const slotIndex = Number(req.params.slotIndex);
+  const supabase = clientForToken(accessToken);
+  const { data, error } = await supabase
+    .from("dynasty_saves")
+    .select("dynasty")
+    .eq("user_id", userId)
+    .eq("slot_index", slotIndex)
+    .maybeSingle();
+  if (error) return res.status(500).json({ error: error.message });
+  if (!data) return res.status(404).json({ error: "No save in that slot" });
+
+  const dynasty = deserializeDynasty(data.dynasty);
+  const chronicle = await writeChronicle(dynasty);
+  dynasty.chronicleText = chronicle;
+
+  const { error: saveError } = await supabase
+    .from("dynasty_saves")
+    .update({ dynasty: serializeDynasty(dynasty), updated_at: new Date().toISOString() })
+    .eq("user_id", userId)
+    .eq("slot_index", slotIndex);
+  if (saveError) return res.status(500).json({ error: saveError.message });
+
+  res.json({ chronicle });
 });
 
 // DELETE /dynasties/:slotIndex

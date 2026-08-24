@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { DynastySave } from "@dynasty/shared";
-import { chooseHeir, getSlot } from "../api.js";
+import { chooseHeir, getChronicle, getEulogy, getSlot } from "../api.js";
 import { S } from "../theme.js";
 import { AdSlot } from "../components/AdSlot.js";
 
@@ -8,6 +8,8 @@ export function GameOverScreen({ slotIndex, onHeirChosen }: { slotIndex: number;
   const [save, setSave] = useState<DynastySave | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [eulogy, setEulogy] = useState<string | null>(null);
+  const [chronicle, setChronicle] = useState<string | null>(null);
 
   useEffect(() => {
     getSlot(slotIndex).then(setSave).catch((e) => setError(e.message));
@@ -26,6 +28,24 @@ export function GameOverScreen({ slotIndex, onHeirChosen }: { slotIndex: number;
     }
   }
 
+  async function loadEulogy() {
+    setError(null);
+    try {
+      setEulogy(await getEulogy(slotIndex));
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  }
+
+  async function loadChronicle() {
+    setError(null);
+    try {
+      setChronicle(await getChronicle(slotIndex));
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  }
+
   if (!save?.character) return <div style={S.page}>{error ? <div style={S.error}>{error}</div> : <p>Loading...</p>}</div>;
   const c = save.character;
 
@@ -37,6 +57,20 @@ export function GameOverScreen({ slotIndex, onHeirChosen }: { slotIndex: number;
           Aged {c.age}, of {c.deathCause}, in the year {c.year}.
         </p>
         {error && <div style={S.error}>{error}</div>}
+        {eulogy ? (
+          <p style={{ fontStyle: "italic" }}>{eulogy}</p>
+        ) : (
+          <button style={S.button} onClick={loadEulogy}>
+            Read Eulogy
+          </button>
+        )}
+        {chronicle ? (
+          <p style={{ fontStyle: "italic" }}>{chronicle}</p>
+        ) : (
+          <button style={S.button} onClick={loadChronicle}>
+            View Dynasty Chronicle
+          </button>
+        )}
         <h2 style={S.h2}>Choose an Heir</h2>
         {c.family.children.length === 0 ? (
           <p>No children survive to inherit - this dynasty has ended.</p>

@@ -61,6 +61,23 @@ export async function resolveMilestone(
   return authedFetch(`/turn/${slotIndex}/resolve-milestone`, { method: "POST", body: JSON.stringify({ choiceId }) });
 }
 
+export async function customAction(
+  slotIndex: number,
+  actionText: string
+): Promise<{ character: Character; dynasty: Dynasty; narrative: string; statDelta: Record<string, number> }> {
+  return authedFetch(`/turn/${slotIndex}/custom-action`, { method: "POST", body: JSON.stringify({ actionText }) });
+}
+
+export async function getEulogy(slotIndex: number): Promise<string> {
+  const data = await authedFetch(`/turn/${slotIndex}/eulogy`);
+  return data.eulogy;
+}
+
+export async function getChronicle(slotIndex: number): Promise<string> {
+  const data = await authedFetch(`/dynasties/${slotIndex}/chronicle`);
+  return data.chronicle;
+}
+
 // --- Family (Section 8) ---
 
 export type SuitorProspect = {

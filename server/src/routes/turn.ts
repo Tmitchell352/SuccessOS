@@ -4,7 +4,7 @@ import { requireAuth } from "../middleware/auth.js";
 import { clientForToken } from "../supabase.js";
 import { deserializeCharacter, deserializeDynasty, serializeCharacter, serializeDynasty } from "../game/engine/persistence.js";
 import { advanceYear } from "../game/engine/turn.js";
-import { generateEvent } from "../game/ai/eventGenerator.js";
+import { generateEvent, resolveCustomAction, writeEulogy } from "../game/ai/eventGenerator.js";
 import { toTreeRecord } from "../game/engine/factory.js";
 import { computeHeirStatBonuses } from "../game/engine/family.js";
 import { resolveMilestone } from "../game/engine/milestones.js";
@@ -246,4 +246,87 @@ turnRouter.post("/:slotIndex/resolve-milestone", async (req, res) => {
   if (saveError) return res.status(500).json({ error: saveError.message });
 
   res.json({ character, dynasty, log: result.log, success: true });
+});
+
+// POST /turn/:slotIndex/custom-action - free-text player input (Section 9,
+// one of the 4 AI call sites). Narrates an outcome and applies small,
+// server-clamped stat effects - see resolveCustomAction's own comment for
+// why the AI's proposed deltas are never trusted directly.
+turnRouter.post("/:slotIndex/custom-action", async (req, res) => {
+  const { userId, accessToken } = req as unknown as AuthedRequest;
+  const slotIndex = Number(req.params.slotIndex);
+  const { actionText } = req.body ?? {};
+  if (!actionText || typeof actionText !== "string" || !actionText.trim()) {
+    return res.status(400).json({ error: "actionText is required" });
+  }
+  const supabase = clientForToken(accessToken);
+
+  const { data, error } = await supabase
+    .from("dynasty_saves")
+    .select("dynasty, character")
+    .eq("user_id", userId)
+    .eq("slot_index", slotIndex)
+    .maybeSingle();
+  if (error) return res.status(500).json({ error: error.message });
+  if (!data) return res.status(404).json({ error: "No save in that slot" });
+
+  const dynasty = deserializeDynasty(data.dynasty);
+  const character = deserializeCharacter(data.character);
+  if (!character || !character.alive) return res.status(400).json({ error: "No living character in that slot" });
+  if (character.pendingMilestone) return res.status(400).json({ error: "Resolve the pending historical milestone first" });
+
+  const result = await resolveCustomAction(character, dynasty, actionText.trim());
+  if (result.statDelta.influence) character.stats.influence = clamp(character.stats.influence + result.statDelta.influence, 0, 100);
+  if (result.statDelta.skill) character.stats.skill = clamp(character.stats.skill + result.statDelta.skill, 0, 100);
+  if (result.statDelta.wealth) character.stats.wealth = clamp(character.stats.wealth + result.statDelta.wealth, 0, 999);
+  if (result.statDelta.health) character.stats.health = clamp(character.stats.health + result.statDelta.health, 0, 100);
+  if (result.statDelta.popularity) character.stats.popularity = clamp(character.stats.popularity + result.statDelta.popularity, 0, 100);
+  character.log.push({ age: character.age, year: character.year, text: result.narrative });
+
+  const { error: saveError } = await supabase
+    .from("dynasty_saves")
+    .update({ dynasty: serializeDynasty(dynasty), character: serializeCharacter(character), updated_at: new Date().toISOString() })
+    .eq("user_id", userId)
+    .eq("slot_index", slotIndex);
+  if (saveError) return res.status(500).json({ error: saveError.message });
+
+  res.json({ character, dynasty, narrative: result.narrative, statDelta: result.statDelta });
+});
+
+// GET /turn/:slotIndex/eulogy - an on-demand narrative generator (Section
+// 9). Works on a just-deceased character (still in the slot until an heir
+// is chosen). Cached on Dynasty.biographies so repeat views don't re-spend
+// an API call.
+turnRouter.get("/:slotIndex/eulogy", async (req, res) => {
+  const { userId, accessToken } = req as unknown as AuthedRequest;
+  const slotIndex = Number(req.params.slotIndex);
+  const supabase = clientForToken(accessToken);
+
+  const { data, error } = await supabase
+    .from("dynasty_saves")
+    .select("dynasty, character")
+    .eq("user_id", userId)
+    .eq("slot_index", slotIndex)
+    .maybeSingle();
+  if (error) return res.status(500).json({ error: error.message });
+  if (!data) return res.status(404).json({ error: "No save in that slot" });
+
+  const dynasty = deserializeDynasty(data.dynasty);
+  const character = deserializeCharacter(data.character);
+  if (!character || character.alive) return res.status(400).json({ error: "No deceased character in that slot" });
+
+  if (dynasty.biographies[character.id]) {
+    return res.json({ eulogy: dynasty.biographies[character.id] });
+  }
+  const eulogy = await writeEulogy(character, dynasty);
+  dynasty.biographies[character.id] = eulogy;
+
+  const { error: saveError } = await supabase
+    .from("dynasty_saves")
+    .update({ dynasty: serializeDynasty(dynasty), updated_at: new Date().toISOString() })
+    .eq("user_id", userId)
+    .eq("slot_index", slotIndex);
+  if (saveError) return res.status(500).json({ error: saveError.message });
+
+  res.json({ eulogy });
 });

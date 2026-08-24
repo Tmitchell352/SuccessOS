@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { DynastySave } from "@dynasty/shared";
-import { advanceTurn, getSlot, resolveMilestone } from "../api.js";
+import { advanceTurn, customAction, getSlot, resolveMilestone } from "../api.js";
 import { S } from "../theme.js";
 
 export function PlayScreen({
@@ -18,6 +18,7 @@ export function PlayScreen({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [victoryMessage, setVictoryMessage] = useState<string | null>(null);
+  const [actionText, setActionText] = useState("");
 
   useEffect(() => {
     getSlot(slotIndex).then(setSave).catch((e) => setError(e.message));
@@ -40,6 +41,21 @@ export function PlayScreen({
         return;
       }
       if (result.victoryAchieved) setVictoryMessage("Victory! The dynasty has achieved its goal.");
+      setSave((prev) => (prev ? { ...prev, character: result.character, dynasty: result.dynasty } : prev));
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submitAction() {
+    if (!actionText.trim()) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await customAction(slotIndex, actionText.trim());
+      setActionText("");
       setSave((prev) => (prev ? { ...prev, character: result.character, dynasty: result.dynasty } : prev));
     } catch (err) {
       setError((err as Error).message);
@@ -112,6 +128,19 @@ export function PlayScreen({
         <button style={{ ...S.button, background: "transparent", color: "#5c3d20" }} onClick={onBack}>
           Back to Slots
         </button>
+        <div style={{ marginTop: "12px" }}>
+          <label>Try something (Section 9's free-text action)</label>
+          <input
+            style={S.input}
+            value={actionText}
+            onChange={(e) => setActionText(e.target.value)}
+            placeholder="e.g. try to bribe the tax collector"
+            onKeyDown={(e) => e.key === "Enter" && submitAction()}
+          />
+          <button style={S.button} onClick={submitAction} disabled={busy || !actionText.trim()}>
+            Attempt It
+          </button>
+        </div>
       </div>
       <div style={S.card}>
         <h2 style={S.h2}>Life So Far</h2>

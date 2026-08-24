@@ -3,7 +3,8 @@ import type { AuthedRequest } from "../middleware/auth.js";
 import { requireAuth } from "../middleware/auth.js";
 import { clientForToken } from "../supabase.js";
 import { deserializeCharacter, deserializeDynasty, serializeCharacter, serializeDynasty } from "../game/engine/persistence.js";
-import { applyParenting, generateSuitorProspects, marry, type ParentingStyle, type SuitorProspect } from "../game/engine/family.js";
+import { applyParenting, marry, type ParentingStyle, type SuitorProspect } from "../game/engine/family.js";
+import { generateSuitors } from "../game/ai/eventGenerator.js";
 
 // Explicit player-initiated family actions (Section 8). Like geopolitics.ts,
 // marriage and parenting are real player choices, so each is its own
@@ -30,16 +31,16 @@ function isError(x: unknown): x is { error: string; status: number } {
   return typeof x === "object" && x !== null && "error" in x;
 }
 
-// GET /family/:slotIndex/suitors - three deterministic marriage prospects
-// (Section 8's No AI Narration fallback path; the AI-generated version is
-// one of the three remaining AI call sites, still TODO).
+// GET /family/:slotIndex/suitors - three marriage prospects (Section 8):
+// AI-generated when a key is configured and noAiMode is off, deterministic
+// otherwise (generateSuitors itself falls back on any AI failure).
 familyRouter.get("/:slotIndex/suitors", async (req, res) => {
   const { userId, accessToken } = req as unknown as AuthedRequest;
   const slotIndex = Number(req.params.slotIndex);
   const supabase = clientForToken(accessToken);
   const loaded = await loadLiving(supabase, userId, slotIndex);
   if (isError(loaded)) return res.status(loaded.status).json({ error: loaded.error });
-  res.json({ suitors: generateSuitorProspects(loaded.character) });
+  res.json({ suitors: await generateSuitors(loaded.character, loaded.dynasty) });
 });
 
 // POST /family/:slotIndex/marry - body: { suitor: SuitorProspect,

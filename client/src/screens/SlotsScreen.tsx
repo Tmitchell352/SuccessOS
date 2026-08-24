@@ -3,6 +3,7 @@ import type { DynastySave } from "@dynasty/shared";
 import { listSlots } from "../api.js";
 import { S } from "../theme.js";
 import { supabase } from "../supabase.js";
+import { AdSlot } from "../components/AdSlot.js";
 
 export function SlotsScreen({ onSelectSlot, onNewDynasty }: { onSelectSlot: (slotIndex: number) => void; onNewDynasty: (slotIndex: number) => void }) {
   const [slots, setSlots] = useState<DynastySave[] | null>(null);
@@ -49,6 +50,7 @@ export function SlotsScreen({ onSelectSlot, onNewDynasty }: { onSelectSlot: (slo
           Sign Out
         </button>
       </div>
+      <AdSlot label="slots-screen" />
     </div>
   );
 }

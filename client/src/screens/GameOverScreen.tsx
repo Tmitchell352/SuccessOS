@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { DynastySave } from "@dynasty/shared";
 import { chooseHeir, getSlot } from "../api.js";
 import { S } from "../theme.js";
+import { AdSlot } from "../components/AdSlot.js";
 
 export function GameOverScreen({ slotIndex, onHeirChosen }: { slotIndex: number; onHeirChosen: () => void }) {
   const [save, setSave] = useState<DynastySave | null>(null);
@@ -47,6 +48,7 @@ export function GameOverScreen({ slotIndex, onHeirChosen }: { slotIndex: number;
           ))
         )}
       </div>
+      <AdSlot label="gameover-screen" />
     </div>
   );
 }

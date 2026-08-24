@@ -23,6 +23,13 @@ export function PlayScreen({
     getSlot(slotIndex).then(setSave).catch((e) => setError(e.message));
   }, [slotIndex]);
 
+  // A dead character sitting in a save slot (e.g. the app was closed right
+  // after a death, before an heir was chosen) should route straight to
+  // heir selection, not render a play screen for someone who isn't alive.
+  useEffect(() => {
+    if (save?.character && !save.character.alive) onDied();
+  }, [save, onDied]);
+
   async function next() {
     setBusy(true);
     setError(null);
@@ -56,7 +63,7 @@ export function PlayScreen({
 
   if (!save) return <div style={S.page}>{error ? <div style={S.error}>{error}</div> : <p>Loading...</p>}</div>;
   const c = save.character;
-  if (!c) return <div style={S.page}>{"No living character - choose an heir."}</div>;
+  if (!c || !c.alive) return <div style={S.page}>{"No living character - choose an heir."}</div>;
 
   // A branching historical milestone (Section 6) pauses everything else
   // until the player picks a side.

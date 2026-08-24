@@ -1,5 +1,6 @@
 import type { Character, Child, Dynasty } from "@dynasty/shared";
 import { randomName } from "./factory.js";
+import { eraAdjustedAge } from "./mortality.js";
 
 function clamp(n: number, lo = 0, hi = 100): number {
   return Math.max(lo, Math.min(hi, n));
@@ -157,9 +158,12 @@ export function tickFamily(c: Character, dynasty: Dynasty): FamilyTickResult {
 
   // Spouse mortality (ages alongside domestic NPCs; Section 8 covers
   // mentor/rival/friend explicitly but the same real-mortality-risk
-  // principle applies to a spouse).
+  // principle applies to a spouse). Era-adjusted (./mortality.ts) so a
+  // spouse in the Bronze Age faces old-age risk on the same period-accurate
+  // timeline the player character does, not a modern one.
   if (c.family.status === "married" && c.family.spouseAge !== undefined) {
-    const chance = c.family.spouseAge > 60 ? 0.02 : c.family.spouseAge > 40 ? 0.008 : 0.002;
+    const spouseEraAge = eraAdjustedAge(c.family.spouseAge, c.year);
+    const chance = spouseEraAge > 60 ? 0.02 : spouseEraAge > 40 ? 0.008 : 0.002;
     if (Math.random() < chance) {
       log.push(`${c.family.spouseName} has died. ${c.name} was widowed.`);
       c.family.status = "single";
@@ -206,25 +210,25 @@ export function tickFamily(c: Character, dynasty: Dynasty): FamilyTickResult {
     log.push(`Took ${name} on as a protege.`);
   }
 
-  if (c.domestic.mentorName && c.domestic.mentorAge !== undefined && c.domestic.mentorAge > 55 && Math.random() < 0.03) {
+  if (c.domestic.mentorName && c.domestic.mentorAge !== undefined && eraAdjustedAge(c.domestic.mentorAge, c.year) > 55 && Math.random() < 0.03) {
     log.push(`${c.domestic.mentorName}, their mentor, has passed away.`);
     c.domestic.mentorName = undefined;
     c.domestic.mentorTrust = undefined;
     c.domestic.mentorAge = undefined;
   }
-  if (c.domestic.rivalName && c.domestic.rivalAge !== undefined && c.domestic.rivalAge > 55 && Math.random() < 0.02) {
+  if (c.domestic.rivalName && c.domestic.rivalAge !== undefined && eraAdjustedAge(c.domestic.rivalAge, c.year) > 55 && Math.random() < 0.02) {
     log.push(`${c.domestic.rivalName}, their rival, has died.`);
     c.domestic.rivalName = undefined;
     c.domestic.rivalTension = undefined;
     c.domestic.rivalAge = undefined;
   }
-  if (c.domestic.friendName && c.domestic.friendAge !== undefined && c.domestic.friendAge > 55 && Math.random() < 0.02) {
+  if (c.domestic.friendName && c.domestic.friendAge !== undefined && eraAdjustedAge(c.domestic.friendAge, c.year) > 55 && Math.random() < 0.02) {
     log.push(`${c.domestic.friendName}, their friend, has passed away.`);
     c.domestic.friendName = undefined;
     c.domestic.friendBond = undefined;
     c.domestic.friendAge = undefined;
   }
-  if (c.protegeName && c.protegeAge !== undefined && c.protegeAge > 55 && Math.random() < 0.02) {
+  if (c.protegeName && c.protegeAge !== undefined && eraAdjustedAge(c.protegeAge, c.year) > 55 && Math.random() < 0.02) {
     log.push(`${c.protegeName}, their protege, has died.`);
     c.protegeName = undefined;
     c.protegeAge = undefined;
@@ -237,7 +241,8 @@ export function tickFamily(c: Character, dynasty: Dynasty): FamilyTickResult {
   // simulation".
   const survivingSiblings = [];
   for (const s of c.siblings) {
-    const deathChance = s.age > 60 ? 0.02 : s.age > 40 ? 0.006 : 0.0015;
+    const sibEraAge = eraAdjustedAge(s.age, c.year);
+    const deathChance = sibEraAge > 60 ? 0.02 : sibEraAge > 40 ? 0.006 : 0.0015;
     if (Math.random() < deathChance) {
       log.push(`Word arrives that their sibling ${s.name} has died.`);
     } else {

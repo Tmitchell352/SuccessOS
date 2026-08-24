@@ -6,6 +6,7 @@ import { tickGeopolitics } from "./geopolitics.js";
 import { tickFamily } from "./family.js";
 import { tickMilestones } from "./milestones.js";
 import { checkVictory, tickAchievements } from "./achievements.js";
+import { tickLifeEvents } from "./lifeEvents.js";
 
 export type TurnResult = {
   character: Character;
@@ -177,6 +178,16 @@ export function advanceYear(character: Character, dynasty: Dynasty): TurnResult 
     const trackTick = tickTrackMechanic(c, dynasty);
     log.push(...trackTick.log);
     if (trackTick.deathCause) scriptedDeathCause = trackTick.deathCause;
+  }
+
+  // 10 (cont.). Broader life events (see ./lifeEvents.ts): a small chance of
+  // an ambient flavor beat - family reunion, sibling interaction, protege
+  // growth, a marriage-prospects or conversion-opportunity nudge, a faction
+  // overture - so a quiet non-milestone, non-track-event year doesn't feel
+  // empty. Skipped on a turn that's already ending in a scripted death.
+  if (!scriptedDeathCause) {
+    const lifeEventTick = tickLifeEvents(c);
+    log.push(...lifeEventTick.log);
   }
 
   // 11. Coming-of-age at 18: assign a track if the character doesn't have

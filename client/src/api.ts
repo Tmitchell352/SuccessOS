@@ -33,6 +33,7 @@ export async function createDynasty(params: {
   nation: string;
   characterName?: string;
   motto?: string;
+  victoryGoal?: "none" | "gen10" | "legacy300" | "legacy750";
 }): Promise<DynastySave> {
   const data = await authedFetch("/dynasties", { method: "POST", body: JSON.stringify(params) });
   return data.slot;
@@ -45,7 +46,7 @@ export async function getSlot(slotIndex: number): Promise<DynastySave> {
 
 export async function advanceTurn(
   slotIndex: number
-): Promise<{ character: Character; dynasty: Dynasty; log: string[]; narrative: string | null; died: boolean }> {
+): Promise<{ character: Character; dynasty: Dynasty; log: string[]; narrative: string | null; died: boolean; victoryAchieved: boolean }> {
   return authedFetch(`/turn/${slotIndex}/advance`, { method: "POST" });
 }
 

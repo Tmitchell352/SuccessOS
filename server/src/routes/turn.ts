@@ -75,7 +75,7 @@ turnRouter.post("/:slotIndex/advance", async (req, res) => {
     .eq("slot_index", slotIndex);
   if (saveError) return res.status(500).json({ error: saveError.message });
 
-  res.json({ character: result.character, dynasty: result.dynasty, log: result.log, narrative, died: result.died });
+  res.json({ character: result.character, dynasty: result.dynasty, log: result.log, narrative, died: result.died, victoryAchieved: result.victoryAchieved });
 });
 
 // POST /turn/:slotIndex/choose-heir - after a death, pick a child to

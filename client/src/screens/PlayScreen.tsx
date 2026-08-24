@@ -17,6 +17,7 @@ export function PlayScreen({
   const [save, setSave] = useState<DynastySave | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [victoryMessage, setVictoryMessage] = useState<string | null>(null);
 
   useEffect(() => {
     getSlot(slotIndex).then(setSave).catch((e) => setError(e.message));
@@ -31,6 +32,7 @@ export function PlayScreen({
         onDied();
         return;
       }
+      if (result.victoryAchieved) setVictoryMessage("Victory! The dynasty has achieved its goal.");
       setSave((prev) => (prev ? { ...prev, character: result.character, dynasty: result.dynasty } : prev));
     } catch (err) {
       setError((err as Error).message);
@@ -93,6 +95,7 @@ export function PlayScreen({
           <div style={S.stat}>Popularity {c.stats.popularity}</div>
         </div>
         {error && <div style={S.error}>{error}</div>}
+        {victoryMessage && <div style={S.banner}>{victoryMessage}</div>}
         <button style={S.button} onClick={next} disabled={busy}>
           {busy ? "..." : "Advance a Year"}
         </button>

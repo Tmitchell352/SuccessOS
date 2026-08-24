@@ -8,6 +8,7 @@ export function CreateScreen({ slotIndex, onCreated }: { slotIndex: number; onCr
   const [nation, setNation] = useState(EPOCHS[0].nations[0]);
   const [characterName, setCharacterName] = useState("");
   const [motto, setMotto] = useState("");
+  const [victoryGoal, setVictoryGoal] = useState<"none" | "gen10" | "legacy300" | "legacy750">("none");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -18,7 +19,7 @@ export function CreateScreen({ slotIndex, onCreated }: { slotIndex: number; onCr
     setBusy(true);
     setError(null);
     try {
-      await createDynasty({ slotIndex, epochId, nation, characterName: characterName || undefined, motto: motto || undefined });
+      await createDynasty({ slotIndex, epochId, nation, characterName: characterName || undefined, motto: motto || undefined, victoryGoal });
       onCreated();
     } catch (err) {
       setError((err as Error).message);
@@ -64,6 +65,14 @@ export function CreateScreen({ slotIndex, onCreated }: { slotIndex: number; onCr
 
           <label>Dynasty Motto (optional)</label>
           <input style={S.input} value={motto} onChange={(e) => setMotto(e.target.value)} placeholder="House of..." />
+
+          <label>Victory Goal (optional)</label>
+          <select style={S.input} value={victoryGoal} onChange={(e) => setVictoryGoal(e.target.value as typeof victoryGoal)}>
+            <option value="none">None - play freely</option>
+            <option value="gen10">Reach the 10th generation</option>
+            <option value="legacy300">Amass 300 legacy points</option>
+            <option value="legacy750">Amass 750 legacy points</option>
+          </select>
 
           <button style={S.button} type="submit" disabled={busy}>
             Begin

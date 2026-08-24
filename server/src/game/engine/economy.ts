@@ -36,6 +36,7 @@ export function takeLoan(c: Character, amount: number): EconomyResult {
   }
   c.debt = { principal: Math.round(amount) };
   c.stats.wealth = clamp(c.stats.wealth + Math.round(amount), 0, 999);
+  c._hadDebt = true;
   return { log: [`Took out a loan of ${Math.round(amount)} wealth.`], success: true };
 }
 
@@ -86,6 +87,7 @@ export function attemptVenture(c: Character, stake: number): EconomyResult {
   c.stats.wealth = clamp(c.stats.wealth - roundedStake, 0, 999);
   const payout = Math.round(roundedStake * outcome.multiplier);
   c.stats.wealth = clamp(c.stats.wealth + payout, 0, 999);
+  c._sentVenture = true;
   return { log: [`Staked ${roundedStake} wealth on a venture - ${outcome.label}, returning ${payout}.`], success: true };
 }
 

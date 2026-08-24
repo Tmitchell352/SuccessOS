@@ -10,14 +10,16 @@ import { MenuScreen } from "./screens/MenuScreen.js";
 import { FamilyScreen } from "./screens/FamilyScreen.js";
 import { DynastyActionsScreen } from "./screens/DynastyActionsScreen.js";
 import { EstateScreen } from "./screens/EstateScreen.js";
+import { CodexScreen } from "./screens/CodexScreen.js";
+import { TickerScreen } from "./screens/TickerScreen.js";
 import { S } from "./theme.js";
 
 // Minimal screen router. Matches the original's screen list (Section 3) in
 // spirit: the golden path (loading -> login -> slots -> create -> play ->
 // gameover -> back to play) plus the Menu hub with Family, Dynasty Actions,
-// and Estate. The rest of the original's secondary screens (almanac,
-// records, ticker, tree, codex, settings, timeline, chronicle, biography)
-// are not built yet.
+// Estate, Codex, and History. The rest of the original's secondary screens
+// (almanac, records, tree, settings, timeline, chronicle, biography) are
+// not built yet.
 type Screen =
   | { name: "slots" }
   | { name: "create"; slotIndex: number }
@@ -26,7 +28,9 @@ type Screen =
   | { name: "menu"; slotIndex: number }
   | { name: "family"; slotIndex: number }
   | { name: "dynastyActions"; slotIndex: number }
-  | { name: "estate"; slotIndex: number };
+  | { name: "estate"; slotIndex: number }
+  | { name: "codex"; slotIndex: number }
+  | { name: "ticker"; slotIndex: number };
 
 export function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
@@ -68,6 +72,8 @@ export function App() {
           onFamily={() => setScreen({ name: "family", slotIndex: screen.slotIndex })}
           onDynastyActions={() => setScreen({ name: "dynastyActions", slotIndex: screen.slotIndex })}
           onEstate={() => setScreen({ name: "estate", slotIndex: screen.slotIndex })}
+          onCodex={() => setScreen({ name: "codex", slotIndex: screen.slotIndex })}
+          onTicker={() => setScreen({ name: "ticker", slotIndex: screen.slotIndex })}
           onBack={() => setScreen({ name: "play", slotIndex: screen.slotIndex })}
         />
       );
@@ -77,5 +83,9 @@ export function App() {
       return <DynastyActionsScreen slotIndex={screen.slotIndex} onBack={() => setScreen({ name: "menu", slotIndex: screen.slotIndex })} />;
     case "estate":
       return <EstateScreen slotIndex={screen.slotIndex} onBack={() => setScreen({ name: "menu", slotIndex: screen.slotIndex })} />;
+    case "codex":
+      return <CodexScreen slotIndex={screen.slotIndex} onBack={() => setScreen({ name: "menu", slotIndex: screen.slotIndex })} />;
+    case "ticker":
+      return <TickerScreen slotIndex={screen.slotIndex} onBack={() => setScreen({ name: "menu", slotIndex: screen.slotIndex })} />;
   }
 }

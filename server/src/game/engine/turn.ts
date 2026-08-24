@@ -5,17 +5,26 @@ import { tickTrackMechanic } from "./tracks.js";
 import { tickGeopolitics } from "./geopolitics.js";
 import { tickFamily } from "./family.js";
 import { tickMilestones } from "./milestones.js";
+import { checkVictory, tickAchievements } from "./achievements.js";
 
 export type TurnResult = {
   character: Character;
   dynasty: Dynasty;
   log: string[]; // deterministic log lines generated this turn
   died: boolean;
+  victoryAchieved: boolean;
 };
 
 function clamp(n: number, lo = 0, hi = 100): number {
   return Math.max(lo, Math.min(hi, n));
 }
+
+const CRISES: { id: string; label: string; yearlyDelta: number; minYears: number; maxYears: number }[] = [
+  { id: "plague", label: "Plague", yearlyDelta: -3, minYears: 2, maxYears: 4 },
+  { id: "famine", label: "Famine", yearlyDelta: -2, minYears: 1, maxYears: 3 },
+  { id: "war", label: "War", yearlyDelta: -4, minYears: 2, maxYears: 5 },
+  { id: "unrest", label: "Civil Unrest", yearlyDelta: -2, minYears: 1, maxYears: 2 },
+];
 
 function trackDefFor(c: Character) {
   const epoch = EPOCH_BY_ID[c.epochId];
@@ -33,8 +42,14 @@ export function advanceYear(character: Character, dynasty: Dynasty): TurnResult 
   const c: Character = structuredClone(character);
   const log: string[] = [];
 
-  // 1. Achievement/legacy-point checks, victory condition check. TODO: full
-  // achievement/victory system (Sections 6 "victory goals", Codex screen).
+  // 1. Achievement/legacy-point checks, victory condition check (see
+  // ./achievements.ts). Checks state as of the end of the previous turn -
+  // a promotion or milestone from later in *this* turn shows up next turn,
+  // which is an acceptable one-turn lag for a periodic check like this.
+  const achievementTick = tickAchievements(c, dynasty);
+  log.push(...achievementTick.log);
+  const victoryCheck = checkVictory(dynasty, c.year);
+  log.push(...victoryCheck.log);
 
   // 2. Fatal check up front (e.g. imprisonment execution risk) - none wired
   // yet; falls through to the age-appropriate mortality roll in step 12.
@@ -64,7 +79,7 @@ export function advanceYear(character: Character, dynasty: Dynasty): TurnResult 
   log.push(...milestoneTick.log);
   if (milestoneTick.paused) {
     c.log.push({ age: c.age, year: c.year, text: log.join(" ") });
-    return { character: c, dynasty, log, died: false };
+    return { character: c, dynasty, log, died: false, victoryAchieved: victoryCheck.achieved };
   }
 
   const track = trackDefFor(c);
@@ -88,17 +103,25 @@ export function advanceYear(character: Character, dynasty: Dynasty): TurnResult 
     c.stats.skill = clamp(c.stats.skill - 1);
     c.stats.health = clamp(c.stats.health - 2);
   }
+  if (c.stats.wealth === 0) c._wasDestitute = true;
 
-  // 4. Multi-year crisis tick. TODO: real crisis catalogue (plague/famine/
-  // war/unrest with distinct yearlyDelta effects) - currently only decrements
-  // an existing crisis's timer.
+  // 4. Multi-year crisis tick: a small catalogue (plague/famine/war/unrest),
+  // each with its own yearlyDelta and duration - previously activeCrisis
+  // was only ever decremented/nulled, never actually started, so it could
+  // never fire (and _survivedCrisis could never become true).
   if (dynasty.activeCrisis) {
     dynasty.activeCrisis.yearsRemaining -= 1;
     dynasty.nationPower = clamp(dynasty.nationPower + dynasty.activeCrisis.yearlyDelta, 0, 100);
     if (dynasty.activeCrisis.yearsRemaining <= 0) {
       log.push(`The ${dynasty.activeCrisis.label} has passed.`);
       dynasty.activeCrisis = null;
+      c._survivedCrisis = true;
     }
+  } else if (Math.random() < 0.04) {
+    const chosen = CRISES[Math.floor(Math.random() * CRISES.length)];
+    const yearsRemaining = chosen.minYears + Math.floor(Math.random() * (chosen.maxYears - chosen.minYears + 1));
+    dynasty.activeCrisis = { id: chosen.id, label: chosen.label, yearsRemaining, yearlyDelta: chosen.yearlyDelta };
+    log.push(`A ${chosen.label.toLowerCase()} has begun.`);
   }
 
   // 5. Reputation decay above 50, domestic-bond decay toward neutral (fixes
@@ -203,5 +226,5 @@ export function advanceYear(character: Character, dynasty: Dynasty): TurnResult 
 
   c.log.push({ age: c.age, year: c.year, text: log.join(" ") || "A quiet year passed." });
 
-  return { character: c, dynasty, log, died };
+  return { character: c, dynasty, log, died, victoryAchieved: victoryCheck.achieved };
 }

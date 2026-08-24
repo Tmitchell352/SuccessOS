@@ -2,6 +2,7 @@ import type { Character, Dynasty } from "@dynasty/shared";
 import { EPOCH_BY_ID, TRACK_SETS } from "@dynasty/shared";
 import { rollMortality } from "./mortality.js";
 import { tickTrackMechanic } from "./tracks.js";
+import { tickGeopolitics } from "./geopolitics.js";
 
 export type TurnResult = {
   character: Character;
@@ -102,14 +103,25 @@ export function advanceYear(character: Character, dynasty: Dynasty): TurnResult 
   // 7. Notification-only events (world event, rival strike, gifts). TODO:
   // full pool - a minimal world-event toast is emitted in step 12 below.
 
-  // 8-10. Priority scripted events, track-specific mechanic rolls, broader
-  // life events (marriage prospects, family council, faction events, etc.).
-  // Only Political/Military/Commercial have distinct mechanics wired so far
-  // (see ./tracks.ts) - everything else in Sections 6 and 8 is still TODO.
-  let trackDeathCause: string | null = null;
-  const trackTick = tickTrackMechanic(c);
-  log.push(...trackTick.log);
-  if (trackTick.deathCause) trackDeathCause = trackTick.deathCause;
+  // 8. Priority scripted events: throne rebellion, court faction neglect,
+  // integration crises on conquered nations, conversion suspicion (Section
+  // 6 - see ./geopolitics.ts). Runs before the track-specific roll, matching
+  // the handoff doc's priority order.
+  let scriptedDeathCause: string | null = null;
+  const geoTick = tickGeopolitics(c, dynasty);
+  log.push(...geoTick.log);
+  if (geoTick.deathCause) scriptedDeathCause = geoTick.deathCause;
+
+  // 9-10. Track-specific mechanic rolls, broader life events (marriage
+  // prospects, family council, etc.). All 10 tracks have distinct mechanics
+  // wired (see ./tracks.ts); the broader life-event pool in Section 8 is
+  // still TODO. Skipped if a rebellion already killed the character this
+  // turn.
+  if (!scriptedDeathCause) {
+    const trackTick = tickTrackMechanic(c);
+    log.push(...trackTick.log);
+    if (trackTick.deathCause) scriptedDeathCause = trackTick.deathCause;
+  }
 
   // 11. Coming-of-age at 18: assign a track if the character doesn't have
   // one yet.
@@ -123,9 +135,10 @@ export function advanceYear(character: Character, dynasty: Dynasty): TurnResult 
   }
 
   // 12. Mortality roll, milestone check (TODO), specialization prompt
-  // (TODO), world event + nation-power drift. A track-specific death (e.g.
-  // military campaign) takes priority over the generic age/health roll.
-  const cause = trackDeathCause ?? rollMortality(c);
+  // (TODO), world event + nation-power drift. A scripted death (palace
+  // coup, military campaign) takes priority over the generic age/health
+  // roll.
+  const cause = scriptedDeathCause ?? rollMortality(c);
   let died = false;
   if (cause) {
     c.alive = false;

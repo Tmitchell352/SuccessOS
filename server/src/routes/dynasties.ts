@@ -6,6 +6,7 @@ import { requireAuth } from "../middleware/auth.js";
 import { clientForToken } from "../supabase.js";
 import { deserializeCharacter, deserializeDynasty, serializeCharacter, serializeDynasty } from "../game/engine/persistence.js";
 import { newDynasty, newFoundingCharacter, toTreeRecord } from "../game/engine/factory.js";
+import { initRelations } from "../game/engine/geopolitics.js";
 
 export const dynastiesRouter = Router();
 dynastiesRouter.use(requireAuth);
@@ -61,6 +62,7 @@ dynastiesRouter.post("/", async (req, res) => {
   const dynasty: Dynasty = newDynasty(motto || `House of ${character.name.split(" ")[1] ?? character.name}`, difficulty || "standard", tone || "balanced");
   dynasty.currentId = character.id;
   dynasty.people[character.id] = toTreeRecord(character, null, 1);
+  initRelations(character, dynasty);
 
   const supabase = clientForToken(accessToken);
   const { data, error } = await supabase

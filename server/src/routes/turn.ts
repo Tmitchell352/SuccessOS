@@ -130,6 +130,18 @@ turnRouter.post("/:slotIndex/choose-heir", async (req, res) => {
   dynasty.currentId = heir.id;
   dynasty.people[heir.id] = toTreeRecord(heir, deceased.id, (parentRecord?.generation ?? 1) + 1);
 
+  // Succession crisis (Section 6): a ruler dying without an adult heir
+  // ready to inherit triggers a real nation-power penalty and a permanent
+  // ticker entry.
+  const wasRuler = deceased.trackId === "political" && deceased.trackTier === 3;
+  if (wasRuler && heir.age < 18) {
+    dynasty.nationPower = Math.max(0, dynasty.nationPower - 15);
+    dynasty.eventTicker.push({
+      year: deceased.year,
+      text: `${deceased.name}'s death left the throne to a child heir, ${heir.name} - a succession crisis shook the realm.`,
+    });
+  }
+
   const { error: saveError } = await supabase
     .from("dynasty_saves")
     .update({

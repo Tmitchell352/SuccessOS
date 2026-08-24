@@ -7,6 +7,7 @@ import { tickFamily } from "./family.js";
 import { tickMilestones } from "./milestones.js";
 import { checkVictory, tickAchievements } from "./achievements.js";
 import { tickLifeEvents } from "./lifeEvents.js";
+import { tickEconomicEvents } from "./economicEvents.js";
 
 export type TurnResult = {
   character: Character;
@@ -188,6 +189,16 @@ export function advanceYear(character: Character, dynasty: Dynasty): TurnResult 
   if (!scriptedDeathCause) {
     const lifeEventTick = tickLifeEvents(c);
     log.push(...lifeEventTick.log);
+  }
+
+  // Automatic economic events (Section 7, see ./economicEvents.ts): small
+  // windfalls, losses, and a scaled-down ambient venture triggered by turn
+  // state rather than a player visiting Estate. A separate roll from the
+  // life-events one above so an economic beat doesn't crowd out a social one
+  // in the same turn.
+  if (!scriptedDeathCause) {
+    const economicEventTick = tickEconomicEvents(c);
+    log.push(...economicEventTick.log);
   }
 
   // 11. Coming-of-age at 18: assign a track if the character doesn't have

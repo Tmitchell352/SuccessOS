@@ -5,7 +5,7 @@ import { COURT_FACTIONS, EPOCH_BY_ID } from "@dynasty/shared";
 const FIRST_NAMES = ["Amara", "Tobias", "Isolde", "Kaelen", "Mirena", "Corwin", "Anwen", "Dashiell", "Yeva", "Renard"];
 const LAST_SEEDS = ["Ashford", "Vale", "Rourke", "Sten", "Marek", "Oshiro", "Windham", "Calder", "Brenner", "Solis"];
 
-function randomName(): string {
+export function randomName(): string {
   const f = FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)];
   const l = LAST_SEEDS[Math.floor(Math.random() * LAST_SEEDS.length)];
   return `${f} ${l}`;

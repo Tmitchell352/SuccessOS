@@ -29,7 +29,7 @@ Without `ANTHROPIC_API_KEY` set, the game still fully works — every turn falls
 
 - Full `Character`/`Dynasty`/`TreeRecord` type system (handoff Section 2).
 - All 20 epochs with correct id/year/label/currency (Section 4's table) and a **starter subset** of nations per epoch — not the original's full 111-nation roster, since that content lived only in the unavailable source file. Extending `shared/src/epochs.ts` is pure data entry; the engine doesn't need to change.
-- All 10 career tracks' title ladders and salaries, in all 4 era-appropriate dictionaries (Section 5). Only Political, Military, and Commercial have any of their *distinct* mechanics from Section 5's table wired into the engine — the rest currently just progress through titles/salary.
+- All 10 career tracks' title ladders and salaries, in all 4 era-appropriate dictionaries (Section 5) — and now all 10 tracks' *distinct* mechanics from Section 5's table are wired into the engine (`server/src/game/engine/tracks.ts`): Political's elite/commoner standing split, Military's campaign injury/death risk, Religious's uncapped followers with schism risk, Criminal's heat meter with bribe/flee/imprison resolution, Academic's named treatises, Commercial's major-deal coin-flip, Medical's skill-weighted difficult cases, Maritime's voyage risk, Artisan's masterworks, and Sports's persistent rival with win/loss record and endorsement deals.
 - The deterministic per-turn engine (`server/src/game/engine/turn.ts`), covering most of Section 9's numbered turn structure: aging, salary/property income, health regen, debt interest, old-age decay, reputation and domestic-bond decay (including the fix for the original's one-way rival-tension bug), NPC/children aging, coming-of-age track assignment, mortality rolls, tier promotion, and world-event/nation-power drift.
 - One AI call site (`generateEvent`, Section 9's "only 4 things call the AI" rule) using the Anthropic TypeScript SDK server-side, with a deterministic fallback when no key is configured.
 - Auth, save/load, turn-advance, and choose-heir routes, backed by Supabase Auth + Postgres with RLS.
@@ -41,12 +41,11 @@ Without `ANTHROPIC_API_KEY` set, the game still fully works — every turn falls
 Following the handoff doc's own priority order (Section 12), roughly in the order it makes sense to tackle:
 
 1. **The rest of the 111-nation dataset** — this is pure content authoring against the existing `Epoch` shape.
-2. **Per-track distinct mechanics** for Religious (followers/schism), Criminal (heat meter), Academic, Medical, Maritime, Artisan, Sports (Section 5's table).
-3. **Geopolitical systems** (Section 6): conquest, integration crises, throne rebellion, alliances, succession crises, espionage, conversion, court factions, branching milestones.
-4. **Family systems** (Section 8): AI-generated marriage suitors, active parenting choices, background-relatives simulation, will styles affecting inheritance splits.
-5. **Economy depth** (Section 7): risky ventures, gifting, inheritance friction, dowries — property and debt interest are the only pieces wired in so far.
-6. **Achievements, victory conditions, and the Codex/Almanac/Timeline/Chronicle/Biography screens** (Section 3's secondary-screen list) — the client only implements the golden path today.
-7. The other 3 AI call sites (`resolveCustomAction`, `generateSuitors`, `writeChronicle`/`writeEulogy`/`writeBiography`).
+2. **Geopolitical systems** (Section 6): conquest, integration crises, throne rebellion, alliances, succession crises, espionage, conversion, court factions, branching milestones.
+3. **Family systems** (Section 8): AI-generated marriage suitors, active parenting choices, background-relatives simulation, will styles affecting inheritance splits.
+4. **Economy depth** (Section 7): risky ventures (outside the Maritime/Commercial track events), gifting, inheritance friction, dowries — property and debt interest are the only general-economy pieces wired in so far.
+5. **Achievements, victory conditions, and the Codex/Almanac/Timeline/Chronicle/Biography screens** (Section 3's secondary-screen list) — the client only implements the golden path today.
+6. The other 3 AI call sites (`resolveCustomAction`, `generateSuitors`, `writeChronicle`/`writeEulogy`/`writeBiography`).
 
 ## Known issue surfaced during setup
 

@@ -1,10 +1,9 @@
 import { S } from "../theme.js";
 
 // Section 3's single Menu hub, added specifically so secondary screens
-// don't each grow their own stack of nav buttons. Only the tiles this
-// rebuild actually has screens for are wired up; the rest of the original's
-// hub (records, tree, settings, timeline, chronicle, biography) isn't
-// built yet.
+// don't each grow their own stack of nav buttons. Settings isn't built yet -
+// there's no player-configurable app state to expose (difficulty/tone/etc.
+// are all locked in at dynasty creation).
 export function MenuScreen({
   onFamily,
   onDynastyActions,
@@ -12,6 +11,8 @@ export function MenuScreen({
   onCodex,
   onTicker,
   onAlmanac,
+  onRecords,
+  onTree,
   onBack,
 }: {
   onFamily: () => void;
@@ -20,6 +21,8 @@ export function MenuScreen({
   onCodex: () => void;
   onTicker: () => void;
   onAlmanac: () => void;
+  onRecords: () => void;
+  onTree: () => void;
   onBack: () => void;
 }) {
   return (
@@ -45,6 +48,12 @@ export function MenuScreen({
         </div>
         <div style={S.menuTile} onClick={onAlmanac}>
           Almanac
+        </div>
+        <div style={S.menuTile} onClick={onRecords}>
+          Records
+        </div>
+        <div style={S.menuTile} onClick={onTree}>
+          Family Tree
         </div>
       </div>
       <div style={{ maxWidth: "560px", margin: "16px auto 0" }}>

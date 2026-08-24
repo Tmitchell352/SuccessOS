@@ -37,7 +37,7 @@ Without `ANTHROPIC_API_KEY` set, the game still fully works — every turn falls
 - **Will styles now do something** (Section 7/8): inheritance friction on the deceased's wealth (22% with no planning, down to 8% with both a written will and a family seat - matching the spec's exact figures) is applied in the choose-heir route, and an `eldestFavored`/`youngestFavored` will that passes over the actual eldest/youngest child gives the new heir a built-in starting rival in that sibling.
 - Auth, save/load, turn-advance, choose-heir, geopolitical-action, and family-action routes, backed by Supabase Auth + Postgres with RLS.
 - **The persistence bug class from Section 10 is designed out structurally**: `server/src/game/engine/persistence.ts` is the single `serializeDynasty`/`deserializeDynasty` choke point every route uses, and `dynasty_saves.dynasty` is one JSONB column — there is no second or third place a new field can be forgotten.
-- A minimal React client covering the golden path: login → slots → create → play → death → choose heir. It does not yet have UI for the geopolitical or family action endpoints above (conquest, alliances, marriage, parenting, etc.) - those are only reachable via the API today.
+- A React client covering the golden path (login → slots → create → play → death → choose heir) plus Section 3's single Menu hub leading to two new screens: **Family** (find suitors, marry, arrange an alliance marriage, apply parenting choices per minor child) and **Dynasty Actions** (forge alliances, espionage, conversion, conquest, seize power, court faction support, manage conquered-territory integration). The rest of the original's secondary screens (estate, almanac, records, ticker, tree, codex, settings, timeline, chronicle, biography) aren't built yet.
 
 ## What's NOT implemented yet
 
@@ -45,9 +45,12 @@ Following the handoff doc's own priority order (Section 12), roughly in the orde
 
 1. **Economy depth** (Section 7): risky ventures (outside the Maritime/Commercial track events), gifting, dowries — property, debt interest, and inheritance friction are the only general-economy pieces wired in so far.
 2. **Branching historical milestones** (Section 6's last bullet) - the other geopolitical systems are implemented, this one isn't.
-3. **Achievements, victory conditions, and the Codex/Almanac/Timeline/Chronicle/Biography screens** (Section 3's secondary-screen list) — the client only implements the golden path today.
-4. **Client UI for the geopolitical and family action endpoints** — the engine and API routes exist; there's no "Dynasty Actions" or marriage/parenting screen to trigger them from yet.
-5. The other 3 AI call sites (`resolveCustomAction`, `generateSuitors`, `writeChronicle`/`writeEulogy`/`writeBiography`).
+3. **Achievements, victory conditions, and the Codex/Almanac/Timeline/Chronicle/Biography screens** (Section 3's secondary-screen list).
+4. The other 3 AI call sites (`resolveCustomAction`, `generateSuitors`, `writeChronicle`/`writeEulogy`/`writeBiography`).
+
+## Testing note: Supabase is unreachable from a Claude Code cloud/remote session
+
+If you're running this from a sandboxed Claude Code environment (as this repo was built in), outbound HTTPS to `*.supabase.co` is blocked by the session's egress policy (confirmed via the agent-proxy status endpoint: `403` / "policy denial" on the `CONNECT` to `supabase.co`). That means the actual HTTP routes that talk to Supabase (`/dynasties/*`, `/turn/*`, `/geopolitics/*`, `/family/*`) can't be exercised end-to-end from inside such a session, live-in-browser, against the real backend - only the underlying engine functions can be (which is what the smoke tests in each feature's commit message actually cover). The new Family/Dynasty Actions client screens were instead verified by running the real app in a real headless browser with the network layer mocked locally (Supabase auth + the API responses), confirming the full render/state/event-handling path works with zero console or page errors - see the screenshots referenced in that commit. If you're running locally (not sandboxed), this restriction doesn't apply and the app should reach Supabase normally.
 
 ## Known issue surfaced during setup
 

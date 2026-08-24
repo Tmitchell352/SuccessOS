@@ -6,14 +6,25 @@ import { SlotsScreen } from "./screens/SlotsScreen.js";
 import { CreateScreen } from "./screens/CreateScreen.js";
 import { PlayScreen } from "./screens/PlayScreen.js";
 import { GameOverScreen } from "./screens/GameOverScreen.js";
+import { MenuScreen } from "./screens/MenuScreen.js";
+import { FamilyScreen } from "./screens/FamilyScreen.js";
+import { DynastyActionsScreen } from "./screens/DynastyActionsScreen.js";
 import { S } from "./theme.js";
 
 // Minimal screen router. Matches the original's screen list (Section 3) in
-// spirit, but only implements the "golden path" - loading -> login -> slots
-// -> create -> play -> gameover -> back to play. The 12+ secondary screens
-// (menu, dynastyActions, estate, almanac, records, ticker, tree, codex,
-// settings, timeline, chronicle, biography) are not built yet.
-type Screen = { name: "slots" } | { name: "create"; slotIndex: number } | { name: "play"; slotIndex: number } | { name: "gameover"; slotIndex: number };
+// spirit: the golden path (loading -> login -> slots -> create -> play ->
+// gameover -> back to play) plus the Menu hub with Family and Dynasty
+// Actions. The rest of the original's secondary screens (estate, almanac,
+// records, ticker, tree, codex, settings, timeline, chronicle, biography)
+// are not built yet.
+type Screen =
+  | { name: "slots" }
+  | { name: "create"; slotIndex: number }
+  | { name: "play"; slotIndex: number }
+  | { name: "gameover"; slotIndex: number }
+  | { name: "menu"; slotIndex: number }
+  | { name: "family"; slotIndex: number }
+  | { name: "dynastyActions"; slotIndex: number };
 
 export function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
@@ -44,9 +55,22 @@ export function App() {
           slotIndex={screen.slotIndex}
           onDied={() => setScreen({ name: "gameover", slotIndex: screen.slotIndex })}
           onBack={() => setScreen({ name: "slots" })}
+          onMenu={() => setScreen({ name: "menu", slotIndex: screen.slotIndex })}
         />
       );
     case "gameover":
       return <GameOverScreen slotIndex={screen.slotIndex} onHeirChosen={() => setScreen({ name: "play", slotIndex: screen.slotIndex })} />;
+    case "menu":
+      return (
+        <MenuScreen
+          onFamily={() => setScreen({ name: "family", slotIndex: screen.slotIndex })}
+          onDynastyActions={() => setScreen({ name: "dynastyActions", slotIndex: screen.slotIndex })}
+          onBack={() => setScreen({ name: "play", slotIndex: screen.slotIndex })}
+        />
+      );
+    case "family":
+      return <FamilyScreen slotIndex={screen.slotIndex} onBack={() => setScreen({ name: "menu", slotIndex: screen.slotIndex })} />;
+    case "dynastyActions":
+      return <DynastyActionsScreen slotIndex={screen.slotIndex} onBack={() => setScreen({ name: "menu", slotIndex: screen.slotIndex })} />;
   }
 }

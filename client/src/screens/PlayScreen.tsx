@@ -3,7 +3,17 @@ import type { DynastySave } from "@dynasty/shared";
 import { advanceTurn, getSlot } from "../api.js";
 import { S } from "../theme.js";
 
-export function PlayScreen({ slotIndex, onDied, onBack }: { slotIndex: number; onDied: () => void; onBack: () => void }) {
+export function PlayScreen({
+  slotIndex,
+  onDied,
+  onBack,
+  onMenu,
+}: {
+  slotIndex: number;
+  onDied: () => void;
+  onBack: () => void;
+  onMenu: () => void;
+}) {
   const [save, setSave] = useState<DynastySave | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -51,6 +61,9 @@ export function PlayScreen({ slotIndex, onDied, onBack }: { slotIndex: number; o
         {error && <div style={S.error}>{error}</div>}
         <button style={S.button} onClick={next} disabled={busy}>
           {busy ? "..." : "Advance a Year"}
+        </button>
+        <button style={S.button} onClick={onMenu}>
+          ☰ Menu
         </button>
         <button style={{ ...S.button, background: "transparent", color: "#5c3d20" }} onClick={onBack}>
           Back to Slots

@@ -52,3 +52,60 @@ export async function advanceTurn(
 export async function chooseHeir(slotIndex: number, childName: string): Promise<{ character: Character; dynasty: Dynasty }> {
   return authedFetch(`/turn/${slotIndex}/choose-heir`, { method: "POST", body: JSON.stringify({ childName }) });
 }
+
+// --- Family (Section 8) ---
+
+export type SuitorProspect = {
+  name: string;
+  trait: "wealthy" | "charming" | "influential" | "humble";
+  description: string;
+  wealthDelta: number;
+  bondStart: number;
+};
+
+export async function getSuitors(slotIndex: number): Promise<SuitorProspect[]> {
+  const data = await authedFetch(`/family/${slotIndex}/suitors`);
+  return data.suitors;
+}
+
+type ActionResponse = { character: Character; dynasty: Dynasty; log: string[]; success: boolean };
+
+export async function marry(slotIndex: number, suitor: SuitorProspect, arrangedWithNation?: string): Promise<ActionResponse> {
+  return authedFetch(`/family/${slotIndex}/marry`, { method: "POST", body: JSON.stringify({ suitor, arrangedWithNation }) });
+}
+
+export type ParentingStyle = "strict" | "permissive" | "educate" | "labor";
+
+export async function applyParenting(slotIndex: number, childName: string, style: ParentingStyle): Promise<ActionResponse> {
+  return authedFetch(`/family/${slotIndex}/parenting`, { method: "POST", body: JSON.stringify({ childName, style }) });
+}
+
+// --- Geopolitics (Section 6) ---
+
+export async function seizePower(slotIndex: number): Promise<ActionResponse> {
+  return authedFetch(`/geopolitics/${slotIndex}/seize-power`, { method: "POST" });
+}
+
+export async function attemptConquest(slotIndex: number, targetNation: string, mode: "absorbed" | "destroyed"): Promise<ActionResponse> {
+  return authedFetch(`/geopolitics/${slotIndex}/conquest`, { method: "POST", body: JSON.stringify({ targetNation, mode }) });
+}
+
+export async function forgeAlliance(slotIndex: number, targetNation: string): Promise<ActionResponse> {
+  return authedFetch(`/geopolitics/${slotIndex}/alliance`, { method: "POST", body: JSON.stringify({ targetNation }) });
+}
+
+export async function sendEspionage(slotIndex: number, targetNation: string): Promise<ActionResponse> {
+  return authedFetch(`/geopolitics/${slotIndex}/espionage`, { method: "POST", body: JSON.stringify({ targetNation }) });
+}
+
+export async function manageIntegration(slotIndex: number, nation: string, action: "pacify" | "suppress"): Promise<ActionResponse> {
+  return authedFetch(`/geopolitics/${slotIndex}/integration`, { method: "POST", body: JSON.stringify({ nation, action }) });
+}
+
+export async function convertFaith(slotIndex: number, targetNation: string): Promise<ActionResponse> {
+  return authedFetch(`/geopolitics/${slotIndex}/convert`, { method: "POST", body: JSON.stringify({ targetNation }) });
+}
+
+export async function courtFactionSupport(slotIndex: number, faction: string): Promise<ActionResponse> {
+  return authedFetch(`/geopolitics/${slotIndex}/court-faction`, { method: "POST", body: JSON.stringify({ faction }) });
+}

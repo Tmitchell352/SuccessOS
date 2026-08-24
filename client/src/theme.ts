@@ -59,4 +59,27 @@ export const S = {
   stat: { background: A.paper, border: `1px solid ${A.border}`, borderRadius: "6px", padding: "6px 10px" },
   error: { color: A.danger, marginBottom: "10px" },
   logEntry: { borderBottom: `1px solid ${A.border}`, padding: "6px 0", fontSize: "0.95rem" },
+  // Section 3's "single Menu hub" pattern: a 2-column icon/tile grid instead
+  // of per-screen nav-button sprawl.
+  menuGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", maxWidth: "560px", margin: "0 auto" },
+  menuTile: {
+    background: A.paperRaised,
+    border: `1px solid ${A.border}`,
+    borderRadius: "10px",
+    padding: "20px",
+    cursor: "pointer",
+    textAlign: "center" as const,
+    boxShadow: "0 2px 6px rgba(43,32,19,0.15)",
+    fontSize: "1.05rem",
+  },
+  select: {
+    display: "block",
+    width: "100%",
+    padding: "8px",
+    marginBottom: "10px",
+    border: `1px solid ${A.border}`,
+    borderRadius: "6px",
+    boxSizing: "border-box" as const,
+  },
+  banner: { background: "#e8dfc4", border: `1px solid ${A.border}`, borderRadius: "6px", padding: "8px 12px", marginBottom: "10px" },
 };

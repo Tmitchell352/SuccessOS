@@ -73,6 +73,14 @@ export async function getEulogy(slotIndex: number): Promise<string> {
   return data.eulogy;
 }
 
+export async function chooseSpecialization(slotIndex: number, specializationId: string): Promise<ActionResponse> {
+  return authedFetch(`/turn/${slotIndex}/choose-specialization`, { method: "POST", body: JSON.stringify({ specializationId }) });
+}
+
+export async function changeCareer(slotIndex: number, trackId: string): Promise<ActionResponse> {
+  return authedFetch(`/turn/${slotIndex}/change-career`, { method: "POST", body: JSON.stringify({ trackId }) });
+}
+
 export async function getChronicle(slotIndex: number): Promise<string> {
   const data = await authedFetch(`/dynasties/${slotIndex}/chronicle`);
   return data.chronicle;

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { DynastySave } from "@dynasty/shared";
-import { advanceTurn, customAction, getSlot, resolveMilestone } from "../api.js";
+import { EPOCH_BY_ID, TRACK_SETS } from "@dynasty/shared";
+import { advanceTurn, changeCareer, chooseSpecialization, customAction, getSlot, resolveMilestone } from "../api.js";
 import { S } from "../theme.js";
 
 export function PlayScreen({
@@ -19,6 +20,7 @@ export function PlayScreen({
   const [busy, setBusy] = useState(false);
   const [victoryMessage, setVictoryMessage] = useState<string | null>(null);
   const [actionText, setActionText] = useState("");
+  const [newTrackId, setNewTrackId] = useState<string | null>(null);
 
   useEffect(() => {
     getSlot(slotIndex).then(setSave).catch((e) => setError(e.message));
@@ -69,6 +71,34 @@ export function PlayScreen({
     setError(null);
     try {
       const result = await resolveMilestone(slotIndex, choiceId);
+      setSave((prev) => (prev ? { ...prev, character: result.character, dynasty: result.dynasty } : prev));
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function pickSpecialization(specializationId: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await chooseSpecialization(slotIndex, specializationId);
+      setSave((prev) => (prev ? { ...prev, character: result.character, dynasty: result.dynasty } : prev));
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submitChangeCareer() {
+    if (!newTrackId) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await changeCareer(slotIndex, newTrackId);
+      setNewTrackId(null);
       setSave((prev) => (prev ? { ...prev, character: result.character, dynasty: result.dynasty } : prev));
     } catch (err) {
       setError((err as Error).message);
@@ -142,6 +172,44 @@ export function PlayScreen({
           </button>
         </div>
       </div>
+      {c.trackId && c.age >= 18 && (() => {
+        const epoch = EPOCH_BY_ID[c.epochId];
+        const set = TRACK_SETS[epoch.trackSet];
+        const trackDef = set[c.trackId as keyof typeof set];
+        const otherTracks = Object.values(set).filter((t) => t.id !== c.trackId);
+        const hasSpecialization = !!c.specializations[c.trackId];
+        return (
+          <div style={S.card}>
+            <h2 style={S.h2}>Career: {trackDef.label}</h2>
+            {!hasSpecialization && (
+              <>
+                <p style={{ fontSize: "0.9rem" }}>Choose a specialization - a one-time career perk (Section 5).</p>
+                {trackDef.specializations.map((spec) => (
+                  <button key={spec.id} style={S.button} disabled={busy} onClick={() => pickSpecialization(spec.id)}>
+                    {spec.label} ({Object.entries(spec.statBonus).map(([k, v]) => `+${v} ${k}`).join(", ")})
+                  </button>
+                ))}
+              </>
+            )}
+            <div style={{ marginTop: "10px" }}>
+              <label>Change Career (starts over at tier 0 in the new track)</label>
+              <select style={S.select} value={newTrackId ?? ""} onChange={(e) => setNewTrackId(e.target.value)}>
+                <option value="" disabled>
+                  Choose a track...
+                </option>
+                {otherTracks.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+              <button style={S.button} disabled={busy || !newTrackId} onClick={submitChangeCareer}>
+                Switch Career
+              </button>
+            </div>
+          </div>
+        );
+      })()}
       <div style={S.card}>
         <h2 style={S.h2}>Life So Far</h2>
         {[...c.log].reverse().map((entry, i) => (

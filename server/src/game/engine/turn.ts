@@ -8,6 +8,12 @@ import { tickMilestones } from "./milestones.js";
 import { checkVictory, tickAchievements } from "./achievements.js";
 import { tickLifeEvents } from "./lifeEvents.js";
 import { tickEconomicEvents } from "./economicEvents.js";
+import { tickLegendaryEvent } from "./legendaryEvents.js";
+import { randomName } from "./factory.js";
+
+function remember(dynasty: Dynasty, name: string): void {
+  if (!dynasty.almanac.includes(name)) dynasty.almanac.push(name);
+}
 
 export type TurnResult = {
   character: Character;
@@ -201,22 +207,42 @@ export function advanceYear(character: Character, dynasty: Dynasty): TurnResult 
     log.push(...economicEventTick.log);
   }
 
-  // 11. Coming-of-age at 18: assign a track if the character doesn't have
-  // one yet.
+  // 11. Coming-of-age at 18: assign a track and an advisor if the character
+  // doesn't have one yet. Character.advisorName existed on the type since
+  // the first commit ("track assignment + advisor", Section 9 step 11) with
+  // nothing ever setting it - purely a named flavor NPC, no bond/trust
+  // metric like mentor/rival/friend.
   if (c.age === 18 && !c.trackId) {
     const epoch = EPOCH_BY_ID[c.epochId];
     const set = TRACK_SETS[epoch.trackSet];
     const trackId = Object.keys(set)[Math.floor(Math.random() * Object.keys(set).length)];
     c.trackId = trackId;
     c.trackTier = 0;
-    log.push(`Came of age and entered the ${set[trackId as keyof typeof set].label} track.`);
+    const advisor = randomName();
+    c.advisorName = advisor;
+    remember(dynasty, advisor);
+    log.push(`Came of age and entered the ${set[trackId as keyof typeof set].label} track, with ${advisor} appointed as their advisor.`);
   }
 
-  // 12. Mortality roll, specialization prompt (TODO), world event +
-  // nation-power drift. (Milestone check already ran above, ahead of
-  // family/geopolitics/track ticks, since a branching one needs to pause
-  // everything else.) A scripted death (palace coup, military campaign)
-  // takes priority over the generic age/health roll.
+  // Health warning (Section 9 step 12): a narrative-only signal when health
+  // is critically low, distinct from the old-age decay above 70 - this can
+  // fire at any age, not just in old age.
+  if (c.stats.health < 25 && Math.random() < 0.4) {
+    log.push(`${c.name}'s health is failing badly - physicians urge rest.`);
+  }
+
+  // Legendary event roll (Section 9 step 12, see ./legendaryEvents.ts): a
+  // rare, higher-magnitude counterpart to the ordinary life/economic event
+  // pools - a genuinely memorable moment, not just an ambient beat.
+  if (!scriptedDeathCause) {
+    const legendaryTick = tickLegendaryEvent(c, dynasty);
+    log.push(...legendaryTick.log);
+  }
+
+  // 12. Mortality roll, world event + nation-power drift. (Milestone check
+  // already ran above, ahead of family/geopolitics/track ticks, since a
+  // branching one needs to pause everything else.) A scripted death (palace
+  // coup, military campaign) takes priority over the generic age/health roll.
   const cause = scriptedDeathCause ?? rollMortality(c);
   let died = false;
   if (cause) {

@@ -1,4 +1,5 @@
-import type { Character, Dynasty } from "@dynasty/shared";
+import type { Character, Dynasty, TrackId } from "@dynasty/shared";
+import { EPOCH_BY_ID, TRACK_SETS } from "@dynasty/shared";
 import { randomName } from "./factory.js";
 
 function clamp(n: number, lo = 0, hi = 100): number {
@@ -225,4 +226,64 @@ export function tickTrackMechanic(c: Character, dynasty: Dynasty): TrackTickResu
   }
 
   return { log };
+}
+
+export type TrackActionResult = { log: string[]; success: boolean };
+
+// Specializations (Section 5's "Cross-track systems"): "3-4 specializations
+// chosen once per track (one-time stat perk), prompted the first time a
+// character (age 18+) has no specialization yet for their current track."
+// The specialization catalogue itself has existed on every TrackDef since
+// the first commit (shared/src/tracks.ts) - what was missing was any way to
+// actually choose one. Not modeled as a turn-pausing prompt like a
+// branching milestone (this is a routine career choice, not a historic
+// fork) - PlayScreen shows the choice as soon as it's eligible, and the
+// player picks it whenever they like via this route.
+export function chooseSpecialization(c: Character, specializationId: string): TrackActionResult {
+  if (!c.trackId) return { log: ["No career track to specialize in yet."], success: false };
+  if (c.age < 18) return { log: ["Too young to specialize."], success: false };
+  if (c.specializations[c.trackId]) return { log: ["Already specialized in this track."], success: false };
+
+  const epoch = EPOCH_BY_ID[c.epochId];
+  const trackDef = TRACK_SETS[epoch.trackSet][c.trackId as TrackId];
+  const spec = trackDef.specializations.find((s) => s.id === specializationId);
+  if (!spec) return { log: ["No such specialization for this track."], success: false };
+
+  c.specializations[c.trackId] = specializationId;
+  if (spec.statBonus.influence) c.stats.influence = clamp(c.stats.influence + spec.statBonus.influence);
+  if (spec.statBonus.skill) c.stats.skill = clamp(c.stats.skill + spec.statBonus.skill);
+  if (spec.statBonus.wealth) c.stats.wealth = clamp(c.stats.wealth + spec.statBonus.wealth, 0, 999);
+  if (spec.statBonus.health) c.stats.health = clamp(c.stats.health + spec.statBonus.health);
+  if (spec.statBonus.popularity) c.stats.popularity = clamp(c.stats.popularity + spec.statBonus.popularity);
+
+  return { log: [`Specialized in ${spec.label}.`], success: true };
+}
+
+// Change Career (Section 5's "Cross-track systems"): "mid-life track
+// switching, available anytime after 18." Previously a character was stuck
+// with whatever track the coming-of-age roll assigned at 18 for their
+// entire life. Switching resets trackTier to 0 (starting over in the new
+// track's title ladder) and costs a little popularity (abandoning one's
+// former calling raises eyebrows) - but any specialization already earned
+// in a track is remembered on Character.specializations (keyed by trackId)
+// and still applies if the player switches back to it later.
+export function changeCareer(c: Character, newTrackId: string): TrackActionResult {
+  if (c.age < 18) return { log: ["Too young to have a career yet."], success: false };
+  if (c.trackId === newTrackId) return { log: ["Already on that track."], success: false };
+
+  const epoch = EPOCH_BY_ID[c.epochId];
+  const set = TRACK_SETS[epoch.trackSet];
+  if (!(newTrackId in set)) return { log: ["No such career track."], success: false };
+
+  const oldLabel = c.trackId ? set[c.trackId as TrackId].label : null;
+  c.trackId = newTrackId as TrackId;
+  c.trackTier = 0;
+  c.retired = false;
+  c.stats.popularity = clamp(c.stats.popularity - 3);
+
+  const label = set[newTrackId as TrackId].label;
+  return {
+    log: [oldLabel ? `Left ${oldLabel.toLowerCase()} behind to start over in ${label}.` : `Began a career in ${label}.`],
+    success: true,
+  };
 }

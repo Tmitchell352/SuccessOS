@@ -9,6 +9,7 @@ import { generateEvent, resolveCustomAction, writeEulogy } from "../game/ai/even
 import { toTreeRecord } from "../game/engine/factory.js";
 import { computeHeirStatBonuses } from "../game/engine/family.js";
 import { resolveMilestone } from "../game/engine/milestones.js";
+import { changeCareer, chooseSpecialization } from "../game/engine/tracks.js";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -328,4 +329,79 @@ turnRouter.get("/:slotIndex/eulogy", async (req, res) => {
   if (saveError) return res.status(500).json({ error: saveError.message });
 
   res.json({ eulogy });
+});
+
+// POST /turn/:slotIndex/choose-specialization - body: { specializationId }
+// (Section 5's "specializations... prompted the first time a character has
+// no specialization yet for their current track"). See
+// ./game/engine/tracks.ts's chooseSpecialization for why this is a
+// player-initiated route rather than a turn-pausing prompt.
+turnRouter.post("/:slotIndex/choose-specialization", async (req, res) => {
+  const { userId, accessToken } = req as unknown as AuthedRequest;
+  const slotIndex = Number(req.params.slotIndex);
+  const { specializationId } = req.body ?? {};
+  if (!specializationId) return res.status(400).json({ error: "specializationId is required" });
+  const supabase = clientForToken(accessToken);
+
+  const { data, error } = await supabase
+    .from("dynasty_saves")
+    .select("dynasty, character")
+    .eq("user_id", userId)
+    .eq("slot_index", slotIndex)
+    .maybeSingle();
+  if (error) return res.status(500).json({ error: error.message });
+  if (!data) return res.status(404).json({ error: "No save in that slot" });
+
+  const dynasty = deserializeDynasty(data.dynasty);
+  const character = deserializeCharacter(data.character);
+  if (!character || !character.alive) return res.status(400).json({ error: "No living character in that slot" });
+
+  const result = chooseSpecialization(character, specializationId);
+  if (!result.success) return res.status(400).json({ error: result.log.join(" ") });
+  character.log.push({ age: character.age, year: character.year, text: result.log.join(" ") });
+
+  const { error: saveError } = await supabase
+    .from("dynasty_saves")
+    .update({ dynasty: serializeDynasty(dynasty), character: serializeCharacter(character), updated_at: new Date().toISOString() })
+    .eq("user_id", userId)
+    .eq("slot_index", slotIndex);
+  if (saveError) return res.status(500).json({ error: saveError.message });
+
+  res.json({ character, dynasty, log: result.log, success: true });
+});
+
+// POST /turn/:slotIndex/change-career - body: { trackId } (Section 5's
+// "Change Career - mid-life track switching, available anytime after 18").
+turnRouter.post("/:slotIndex/change-career", async (req, res) => {
+  const { userId, accessToken } = req as unknown as AuthedRequest;
+  const slotIndex = Number(req.params.slotIndex);
+  const { trackId } = req.body ?? {};
+  if (!trackId) return res.status(400).json({ error: "trackId is required" });
+  const supabase = clientForToken(accessToken);
+
+  const { data, error } = await supabase
+    .from("dynasty_saves")
+    .select("dynasty, character")
+    .eq("user_id", userId)
+    .eq("slot_index", slotIndex)
+    .maybeSingle();
+  if (error) return res.status(500).json({ error: error.message });
+  if (!data) return res.status(404).json({ error: "No save in that slot" });
+
+  const dynasty = deserializeDynasty(data.dynasty);
+  const character = deserializeCharacter(data.character);
+  if (!character || !character.alive) return res.status(400).json({ error: "No living character in that slot" });
+
+  const result = changeCareer(character, trackId);
+  if (!result.success) return res.status(400).json({ error: result.log.join(" ") });
+  character.log.push({ age: character.age, year: character.year, text: result.log.join(" ") });
+
+  const { error: saveError } = await supabase
+    .from("dynasty_saves")
+    .update({ dynasty: serializeDynasty(dynasty), character: serializeCharacter(character), updated_at: new Date().toISOString() })
+    .eq("user_id", userId)
+    .eq("slot_index", slotIndex);
+  if (saveError) return res.status(500).json({ error: saveError.message });
+
+  res.json({ character, dynasty, log: result.log, success: true });
 });

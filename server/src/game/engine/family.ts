@@ -51,8 +51,9 @@ function randInt(lo: number, hi: number): number {
 
 // Deterministic fallback suitor generation (Section 8: "either AI-generated
 // named suitors ... or a deterministic fallback (No AI mode)"). This is the
-// fallback path - the AI-generated version (generateSuitors) is one of the
-// three remaining AI call sites, still TODO.
+// fallback path - the AI-generated version (generateSuitors, in
+// ../ai/eventGenerator.ts) falls back to this on any parse/validation
+// failure or when No AI mode is on.
 export function generateSuitorProspects(character: Character): SuitorProspect[] {
   const shuffled = [...SUITOR_TRAITS].sort(() => Math.random() - 0.5).slice(0, 3);
   return shuffled.map((t) => ({

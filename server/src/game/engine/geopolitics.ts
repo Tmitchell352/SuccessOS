@@ -22,7 +22,8 @@ function clamp(n: number, lo = 0, hi = 100): number {
 // espionage, conversion + suspicion, and court factions. Succession crises
 // are handled in routes/turn.ts's choose-heir handler (needs the dying
 // character's context, not just a per-turn tick). Branching historical
-// milestones (Section 6's last bullet) are not implemented yet.
+// milestones (Section 6's last bullet) live in ./milestones.ts, wired into
+// turn.ts's per-turn tick rather than here.
 
 export function initRelations(character: Character, dynasty: Dynasty): void {
   const epoch = EPOCH_BY_ID[character.epochId];

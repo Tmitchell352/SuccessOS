@@ -172,8 +172,9 @@ export function advanceYear(character: Character, dynasty: Dynasty): TurnResult 
   const familyTick = tickFamily(c, dynasty);
   log.push(...familyTick.log);
 
-  // 7. Notification-only events (world event, rival strike, gifts). TODO:
-  // full pool - a minimal world-event toast is emitted in step 12 below.
+  // 7. Notification-only events (world event, rival strike, mentor/friend/
+  // spouse gifts) - see ./lifeEvents.ts for rival strikes and NPC gifts;
+  // the world-event half fires separately as a toast in step 12 below.
 
   // 8. Priority scripted events: throne rebellion, court faction neglect,
   // integration crises on conquered nations, conversion suspicion (Section
@@ -185,10 +186,9 @@ export function advanceYear(character: Character, dynasty: Dynasty): TurnResult 
   if (geoTick.deathCause) scriptedDeathCause = geoTick.deathCause;
 
   // 9-10. Track-specific mechanic rolls, broader life events (marriage
-  // prospects, family council, etc.). All 10 tracks have distinct mechanics
-  // wired (see ./tracks.ts); the broader life-event pool in Section 8 is
-  // still TODO. Skipped if a rebellion already killed the character this
-  // turn.
+  // prospects, family council, etc. - see ./lifeEvents.ts below). All 10
+  // tracks have distinct mechanics wired (see ./tracks.ts). Skipped if a
+  // rebellion already killed the character this turn.
   if (!scriptedDeathCause) {
     const trackTick = tickTrackMechanic(c, dynasty);
     log.push(...trackTick.log);

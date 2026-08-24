@@ -4,19 +4,22 @@ function clamp(n: number, lo = 0, hi = 100): number {
   return Math.max(lo, Math.min(hi, n));
 }
 
-// Broader life events, per docs/DYNASTY_HANDOFF.md Section 9 step 10:
-// "conversion opportunity, court faction event, family reunion, family
-// council, parenting choice, sibling interaction, marriage prospects,
-// protege offer/growth." Marriage, parenting, conversion, and court-faction
-// support already exist as explicit player actions elsewhere in this
-// rebuild (Family/Dynasty Actions screens) - deliberately, matching this
-// codebase's overall split of "automatic ambient effects tick every turn,
-// real choices are routes" (see README's geopolitics section for the same
-// reasoning). What was missing was the ambient flavor layer: small,
-// automatic, log-only beats that make an otherwise quiet non-milestone,
-// non-track-event turn feel less empty, and that nudge the player toward
-// those explicit actions (a marriage-prospects notice, a conversion
-// opportunity) rather than silently doing nothing until they think to check.
+// Broader life events, per docs/DYNASTY_HANDOFF.md Section 9 steps 7 and 10:
+// step 10's "conversion opportunity, court faction event, family reunion,
+// family council, parenting choice, sibling interaction, marriage
+// prospects, protege offer/growth," plus step 7's "notification-only
+// events (world event, rival strike, mentor/friend/spouse gift)" - world
+// events fire separately in turn.ts's step 12, the rest live here. Marriage,
+// parenting, conversion, and court-faction support already exist as
+// explicit player actions elsewhere in this rebuild (Family/Dynasty Actions
+// screens) - deliberately, matching this codebase's overall split of
+// "automatic ambient effects tick every turn, real choices are routes" (see
+// README's geopolitics section for the same reasoning). What was missing
+// was the ambient flavor layer: small, automatic, log-only beats that make
+// an otherwise quiet non-milestone, non-track-event turn feel less empty,
+// and that nudge the player toward those explicit actions (a
+// marriage-prospects notice, a conversion opportunity) rather than
+// silently doing nothing until they think to check.
 //
 // At most one fires per turn (a 35% chance to roll at all, then one picked
 // from whichever are eligible) - these are meant to be an occasional beat
@@ -87,6 +90,48 @@ const LIFE_EVENTS: LifeEvent[] = [
       const [faction] = low[Math.floor(Math.random() * low.length)];
       c.factionStanding[faction] = clamp(c.factionStanding[faction] + 3);
       return `${faction} extended a small overture of goodwill.`;
+    },
+  },
+  // Section 9 step 7's "notification-only events (world event, rival
+  // strike, mentor/friend/spouse gift)" - the world-event half already
+  // fires in turn.ts's step 12; rival strikes and NPC gifts had no
+  // implementation anywhere until now.
+  {
+    id: "rivalStrike",
+    eligible: (c) => !!c.domestic.rivalName,
+    apply: (c) => {
+      c.stats.popularity = clamp(c.stats.popularity - 4);
+      c.domestic.rivalTension = clamp((c.domestic.rivalTension ?? 50) + 8);
+      return `${c.domestic.rivalName} spread damaging rumors, souring public opinion.`;
+    },
+  },
+  {
+    id: "mentorGift",
+    eligible: (c) => !!c.domestic.mentorName,
+    apply: (c) => {
+      const amount = 10 + Math.floor(Math.random() * 20);
+      c.stats.wealth = clamp(c.stats.wealth + amount, 0, 999);
+      c.domestic.mentorTrust = clamp((c.domestic.mentorTrust ?? 50) + 3);
+      return `${c.domestic.mentorName} passed along ${amount} wealth's worth of advice and connections.`;
+    },
+  },
+  {
+    id: "friendGift",
+    eligible: (c) => !!c.domestic.friendName,
+    apply: (c) => {
+      c.stats.popularity = clamp(c.stats.popularity + 4);
+      c.domestic.friendBond = clamp((c.domestic.friendBond ?? 50) + 3);
+      return `${c.domestic.friendName} spoke well of them all over town.`;
+    },
+  },
+  {
+    id: "spouseGift",
+    eligible: (c) => c.family.status === "married",
+    apply: (c) => {
+      const amount = 10 + Math.floor(Math.random() * 20);
+      c.stats.wealth = clamp(c.stats.wealth + amount, 0, 999);
+      c.family.spouseBond = clamp((c.family.spouseBond ?? 50) + 3);
+      return `${c.family.spouseName} surprised them with a thoughtful gift worth ${amount} wealth.`;
     },
   },
 ];

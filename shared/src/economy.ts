@@ -1,3 +1,18 @@
+import type { WillStyle } from "./types.js";
+
+// Inheritance friction (Section 7, driven by Section 8's willStyle field): a
+// real cut taken from a deceased character's wealth before it transfers to
+// the heir - 22% with no planning, down to 8% with both a written will and
+// a family seat. Shared so the server (which applies it) and the client
+// (which now previews it on GameOverScreen before the player commits to an
+// heir) can never drift apart on the numbers.
+export function computeInheritanceFriction(willStyle: WillStyle, familySeat: boolean): number {
+  let friction = 0.22;
+  if (willStyle !== "default") friction -= 0.08;
+  if (familySeat) friction -= 0.06;
+  return Math.max(0.08, Math.min(0.22, friction));
+}
+
 // Property tiers, per docs/DYNASTY_HANDOFF.md Section 7: "6 tiers
 // (smallHouse -> grandEstate), one-time purchase cost + one-time bonus +
 // recurring yearly income."

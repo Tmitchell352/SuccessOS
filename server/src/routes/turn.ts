@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { computeInheritanceFriction } from "@dynasty/shared";
 import type { AuthedRequest } from "../middleware/auth.js";
 import { requireAuth } from "../middleware/auth.js";
 import { clientForToken } from "../supabase.js";
@@ -105,13 +106,11 @@ turnRouter.post("/:slotIndex/choose-heir", async (req, res) => {
   const parentRecord = dynasty.people[deceased.id];
 
   // Inheritance friction (Section 7, driven by Section 8's willStyle field):
-  // a real cut taken at death before wealth transfers to the heir - 22%
-  // with no planning, down to 8% with both a written will and a family
-  // seat. willStyle only does something once it feeds this calculation.
-  let friction = 0.22;
-  if (deceased.willStyle !== "default") friction -= 0.08;
-  if (dynasty.familySeat) friction -= 0.06;
-  friction = clamp(friction, 0.08, 0.22);
+  // a real cut taken at death before wealth transfers to the heir. willStyle
+  // only does something once it feeds this calculation. Shared with the
+  // client so GameOverScreen can preview the same number before the player
+  // commits to an heir.
+  const friction = computeInheritanceFriction(deceased.willStyle, dynasty.familySeat);
   const inheritedWealth = Math.round(deceased.stats.wealth * (1 - friction));
 
   // Active parenting choices + inherited traits leave a real stat mark on

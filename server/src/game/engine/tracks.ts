@@ -1,8 +1,12 @@
-import type { Character } from "@dynasty/shared";
+import type { Character, Dynasty } from "@dynasty/shared";
 import { randomName } from "./factory.js";
 
 function clamp(n: number, lo = 0, hi = 100): number {
   return Math.max(lo, Math.min(hi, n));
+}
+
+function remember(dynasty: Dynasty, name: string): void {
+  if (!dynasty.almanac.includes(name)) dynasty.almanac.push(name);
 }
 
 export type TrackTickResult = { log: string[]; deathCause?: string };
@@ -10,7 +14,7 @@ export type TrackTickResult = { log: string[]; deathCause?: string };
 // Per-track distinct mechanics, per docs/DYNASTY_HANDOFF.md Section 5's
 // table. All 10 tracks are implemented. Called once per year for the
 // character's current track, before the mortality roll in advanceYear.
-export function tickTrackMechanic(c: Character): TrackTickResult {
+export function tickTrackMechanic(c: Character, dynasty: Dynasty): TrackTickResult {
   const log: string[] = [];
   if (!c.trackId || c.retired) return { log };
 
@@ -85,6 +89,7 @@ export function tickTrackMechanic(c: Character): TrackTickResult {
           c.domestic.rivalName = randomName();
           c.domestic.rivalTension = 60;
           c.domestic.rivalAge = c.age + Math.round(Math.random() * 10) - 5;
+          remember(dynasty, c.domestic.rivalName);
         }
         log.push(`A schism led by ${c.domestic.rivalName} split off ${lost} followers.`);
       }
@@ -190,6 +195,7 @@ export function tickTrackMechanic(c: Character): TrackTickResult {
       // table).
       if (!c.sportsRivalName) {
         c.sportsRivalName = randomName();
+        remember(dynasty, c.sportsRivalName);
         log.push(`${c.sportsRivalName} has emerged as a fierce rival.`);
       }
       if (Math.random() < 0.35) {

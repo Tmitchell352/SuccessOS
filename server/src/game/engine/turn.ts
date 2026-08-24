@@ -174,7 +174,7 @@ export function advanceYear(character: Character, dynasty: Dynasty): TurnResult 
   // still TODO. Skipped if a rebellion already killed the character this
   // turn.
   if (!scriptedDeathCause) {
-    const trackTick = tickTrackMechanic(c);
+    const trackTick = tickTrackMechanic(c, dynasty);
     log.push(...trackTick.log);
     if (trackTick.deathCause) scriptedDeathCause = trackTick.deathCause;
   }

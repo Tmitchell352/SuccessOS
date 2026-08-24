@@ -5,12 +5,21 @@ function clamp(n: number, lo = 0, hi = 100): number {
   return Math.max(lo, Math.min(hi, n));
 }
 
+// Dynasty.almanac ("named NPCs encountered, for reference screen" - Section
+// 2) existed since the first commit with nothing that ever wrote to it.
+function remember(dynasty: Dynasty, name: string): void {
+  if (!dynasty.almanac.includes(name)) dynasty.almanac.push(name);
+}
+
 // Family & Relationships systems, per docs/DYNASTY_HANDOFF.md Section 8.
 //
 // tickFamily is automatic, called once per year from ./turn.ts: children
-// being born, domestic-NPC and spouse mortality, and a cheap background
-// simulation for unplayed siblings. Marriage and parenting are explicit
-// player choices, exposed via server/src/routes/family.ts.
+// being born, mentor/rival/friend/protege acquisition and mortality, spouse
+// mortality, and a cheap background simulation for unplayed siblings.
+// Domestic NPCs previously only ever aged or died off if they already
+// existed - nothing anywhere ever assigned one, so in normal play they
+// never appeared at all. Marriage and parenting are explicit player
+// choices, exposed via server/src/routes/family.ts.
 //
 // STATUS: covers marriage (deterministic suitor prospects + arranged
 // alliance), children being born, active parenting choices that leave a
@@ -68,6 +77,7 @@ export function marry(character: Character, dynasty: Dynasty, suitor: SuitorPros
   character.family.spouseAge = clamp(character.age + randInt(-5, 5), 14, 90);
   character.family.spouseBond = suitor.bondStart;
   character.stats.wealth = clamp(character.stats.wealth + suitor.wealthDelta, 0, 999);
+  remember(dynasty, suitor.name);
 
   const log = [`Married ${suitor.name}, who ${suitor.description}.`];
 
@@ -159,8 +169,43 @@ export function tickFamily(c: Character, dynasty: Dynasty): FamilyTickResult {
     }
   }
 
-  // Domestic NPCs - mentor, rival, friend, protege - each ticked for
-  // mortality risk (Section 8).
+  // Domestic NPCs - mentor, rival, friend, protege (Section 8) - gained via
+  // a small yearly chance when the slot is empty, previously never
+  // assigned anywhere at all (only aged/killed off if one already
+  // happened to be set, which nothing in normal play could cause).
+  if (!c.domestic.mentorName && c.age >= 12 && c.age <= 50 && Math.random() < 0.06) {
+    const name = randomName();
+    c.domestic.mentorName = name;
+    c.domestic.mentorTrust = 50;
+    c.domestic.mentorAge = clamp(c.age + randInt(10, 30), 18, 90);
+    remember(dynasty, name);
+    log.push(`${name} has taken them on as a mentor.`);
+  }
+  if (!c.domestic.rivalName && c.age >= 10 && Math.random() < 0.05) {
+    const name = randomName();
+    c.domestic.rivalName = name;
+    c.domestic.rivalTension = 50;
+    c.domestic.rivalAge = clamp(c.age + randInt(-10, 10), 5, 90);
+    remember(dynasty, name);
+    log.push(`${name} has emerged as a rival.`);
+  }
+  if (!c.domestic.friendName && c.age >= 8 && Math.random() < 0.07) {
+    const name = randomName();
+    c.domestic.friendName = name;
+    c.domestic.friendBond = 50;
+    c.domestic.friendAge = clamp(c.age + randInt(-10, 10), 5, 90);
+    remember(dynasty, name);
+    log.push(`Became close friends with ${name}.`);
+  }
+  if (!c.protegeName && c.trackTier >= 2 && c.age >= 25 && Math.random() < 0.04) {
+    const name = randomName();
+    c.protegeName = name;
+    c.protegeBond = 50;
+    c.protegeAge = clamp(c.age - randInt(15, 25), 8, 90);
+    remember(dynasty, name);
+    log.push(`Took ${name} on as a protege.`);
+  }
+
   if (c.domestic.mentorName && c.domestic.mentorAge !== undefined && c.domestic.mentorAge > 55 && Math.random() < 0.03) {
     log.push(`${c.domestic.mentorName}, their mentor, has passed away.`);
     c.domestic.mentorName = undefined;

@@ -3,14 +3,15 @@ import { S } from "../theme.js";
 // Section 3's single Menu hub, added specifically so secondary screens
 // don't each grow their own stack of nav buttons. Only the tiles this
 // rebuild actually has screens for are wired up; the rest of the original's
-// hub (almanac, records, tree, settings, timeline, chronicle, biography)
-// isn't built yet.
+// hub (records, tree, settings, timeline, chronicle, biography) isn't
+// built yet.
 export function MenuScreen({
   onFamily,
   onDynastyActions,
   onEstate,
   onCodex,
   onTicker,
+  onAlmanac,
   onBack,
 }: {
   onFamily: () => void;
@@ -18,6 +19,7 @@ export function MenuScreen({
   onEstate: () => void;
   onCodex: () => void;
   onTicker: () => void;
+  onAlmanac: () => void;
   onBack: () => void;
 }) {
   return (
@@ -40,6 +42,9 @@ export function MenuScreen({
         </div>
         <div style={S.menuTile} onClick={onTicker}>
           History
+        </div>
+        <div style={S.menuTile} onClick={onAlmanac}>
+          Almanac
         </div>
       </div>
       <div style={{ maxWidth: "560px", margin: "16px auto 0" }}>

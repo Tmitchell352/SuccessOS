@@ -3,6 +3,7 @@ import { EPOCH_BY_ID, TRACK_SETS } from "@dynasty/shared";
 import { rollMortality } from "./mortality.js";
 import { tickTrackMechanic } from "./tracks.js";
 import { tickGeopolitics } from "./geopolitics.js";
+import { tickFamily } from "./family.js";
 
 export type TurnResult = {
   character: Character;
@@ -95,10 +96,15 @@ export function advanceYear(character: Character, dynasty: Dynasty): TurnResult 
   if (c.domestic.mentorAge !== undefined) c.domestic.mentorAge += 1;
   if (c.domestic.rivalAge !== undefined) c.domestic.rivalAge += 1;
   if (c.domestic.friendAge !== undefined) c.domestic.friendAge += 1;
+  if (c.protegeAge !== undefined) c.protegeAge += 1;
   for (const child of c.family.children) child.age += 1;
   for (const s of c.siblings) s.age += 1;
-  // TODO: background-relatives simulation (unplayed relatives aging/marrying/
-  // dying off-screen).
+
+  // Family systems (Section 8, see ./family.ts): children being born,
+  // domestic-NPC and spouse mortality risk, and a cheap background
+  // simulation for unplayed siblings.
+  const familyTick = tickFamily(c, dynasty);
+  log.push(...familyTick.log);
 
   // 7. Notification-only events (world event, rival strike, gifts). TODO:
   // full pool - a minimal world-event toast is emitted in step 12 below.

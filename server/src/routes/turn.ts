@@ -6,6 +6,11 @@ import { deserializeCharacter, deserializeDynasty, serializeCharacter, serialize
 import { advanceYear } from "../game/engine/turn.js";
 import { generateEvent } from "../game/ai/eventGenerator.js";
 import { toTreeRecord } from "../game/engine/factory.js";
+import { computeHeirStatBonuses } from "../game/engine/family.js";
+
+function clamp(n: number, lo: number, hi: number): number {
+  return Math.max(lo, Math.min(hi, n));
+}
 
 export const turnRouter = Router();
 turnRouter.use(requireAuth);
@@ -92,6 +97,43 @@ turnRouter.post("/:slotIndex/choose-heir", async (req, res) => {
   if (!child) return res.status(400).json({ error: "No such child of the deceased" });
 
   const parentRecord = dynasty.people[deceased.id];
+
+  // Inheritance friction (Section 7, driven by Section 8's willStyle field):
+  // a real cut taken at death before wealth transfers to the heir - 22%
+  // with no planning, down to 8% with both a written will and a family
+  // seat. willStyle only does something once it feeds this calculation.
+  let friction = 0.22;
+  if (deceased.willStyle !== "default") friction -= 0.08;
+  if (dynasty.familySeat) friction -= 0.06;
+  friction = clamp(friction, 0.08, 0.22);
+  const inheritedWealth = Math.round(deceased.stats.wealth * (1 - friction));
+
+  // Active parenting choices + inherited traits leave a real stat mark on
+  // the heir (Section 8), distinct from the flat starting stats every
+  // other new character gets.
+  const bonus = computeHeirStatBonuses(child);
+  const baseStats = { influence: 5, skill: 5, wealth: inheritedWealth + Math.round(child.giftedWealth), health: 90, popularity: 10 };
+  const heirStats = {
+    influence: clamp(baseStats.influence + (bonus.influence ?? 0), 0, 100),
+    skill: clamp(baseStats.skill + (bonus.skill ?? 0), 0, 100),
+    wealth: clamp(baseStats.wealth + (bonus.wealth ?? 0), 0, 999),
+    health: clamp(baseStats.health + (bonus.health ?? 0), 0, 100),
+    popularity: clamp(baseStats.popularity + (bonus.popularity ?? 0), 0, 100),
+  };
+
+  // Will styles also shape sibling relations narratively (Section 8): a
+  // passed-over eldest/youngest sibling under a favoring will starts the
+  // heir's life with a built-in domestic rival.
+  const otherChildren = deceased.family.children.filter((c) => c.name !== child.name);
+  let startingRival: { name: string; age: number } | null = null;
+  if (deceased.willStyle === "eldestFavored" && otherChildren.length) {
+    const eldest = otherChildren.reduce((a, b) => (b.age > a.age ? b : a));
+    if (eldest.age > child.age) startingRival = eldest;
+  } else if (deceased.willStyle === "youngestFavored" && otherChildren.length) {
+    const youngest = otherChildren.reduce((a, b) => (b.age < a.age ? b : a));
+    if (youngest.age < child.age) startingRival = youngest;
+  }
+
   const heir = {
     ...deceased,
     id: crypto.randomUUID(),
@@ -99,9 +141,9 @@ turnRouter.post("/:slotIndex/choose-heir", async (req, res) => {
     age: child.age,
     trackId: null,
     trackTier: 0,
-    stats: { influence: 5, skill: 5, wealth: Math.round(child.giftedWealth), health: 90, popularity: 10 },
+    stats: heirStats,
     family: { status: "single" as const, children: [] },
-    domestic: {},
+    domestic: startingRival ? { rivalName: startingRival.name, rivalTension: 60, rivalAge: startingRival.age } : {},
     traits: child.traits,
     specializations: {},
     imprisoned: null,
@@ -110,7 +152,15 @@ turnRouter.post("/:slotIndex/choose-heir", async (req, res) => {
     possessions: [],
     achievements: [],
     retired: false,
-    log: [{ age: child.age, year: deceased.year, text: `Inherited the dynasty upon ${deceased.name}'s death.` }],
+    log: [
+      {
+        age: child.age,
+        year: deceased.year,
+        text: startingRival
+          ? `Inherited the dynasty upon ${deceased.name}'s death. The will favored their ${deceased.willStyle === "eldestFavored" ? "elder" : "younger"} sibling ${startingRival.name}, who resents being passed over as head of the family.`
+          : `Inherited the dynasty upon ${deceased.name}'s death.`,
+      },
+    ],
     heat: 0,
     followers: 0,
     eliteStanding: 50,

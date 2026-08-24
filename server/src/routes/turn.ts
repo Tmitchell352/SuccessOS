@@ -7,6 +7,7 @@ import { advanceYear } from "../game/engine/turn.js";
 import { generateEvent } from "../game/ai/eventGenerator.js";
 import { toTreeRecord } from "../game/engine/factory.js";
 import { computeHeirStatBonuses } from "../game/engine/family.js";
+import { resolveMilestone } from "../game/engine/milestones.js";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -37,10 +38,15 @@ turnRouter.post("/:slotIndex/advance", async (req, res) => {
   if (!character || !character.alive) {
     return res.status(400).json({ error: "No living character to advance - choose an heir first" });
   }
+  if (character.pendingMilestone) {
+    return res.status(400).json({ error: "Resolve the pending historical milestone first", pendingMilestone: character.pendingMilestone });
+  }
 
   const result = advanceYear(character, dynasty);
   let narrative: string | null = null;
-  if (!result.died) {
+  // Skip the AI narrative beat if a branching milestone just paused the
+  // turn - nothing to narrate onto until the player actually chooses.
+  if (!result.died && !result.character.pendingMilestone) {
     narrative = await generateEvent(result.character, result.dynasty);
     result.character.log[result.character.log.length - 1].text += ` ${narrative}`;
   }
@@ -204,4 +210,40 @@ turnRouter.post("/:slotIndex/choose-heir", async (req, res) => {
   if (saveError) return res.status(500).json({ error: saveError.message });
 
   res.json({ character: heir, dynasty });
+});
+
+// POST /turn/:slotIndex/resolve-milestone - answers a pending branching
+// historical milestone (Section 6's last bullet), unblocking /advance.
+turnRouter.post("/:slotIndex/resolve-milestone", async (req, res) => {
+  const { userId, accessToken } = req as unknown as AuthedRequest;
+  const slotIndex = Number(req.params.slotIndex);
+  const { choiceId } = req.body ?? {};
+  if (!choiceId) return res.status(400).json({ error: "choiceId is required" });
+  const supabase = clientForToken(accessToken);
+
+  const { data, error } = await supabase
+    .from("dynasty_saves")
+    .select("dynasty, character")
+    .eq("user_id", userId)
+    .eq("slot_index", slotIndex)
+    .maybeSingle();
+  if (error) return res.status(500).json({ error: error.message });
+  if (!data) return res.status(404).json({ error: "No save in that slot" });
+
+  const dynasty = deserializeDynasty(data.dynasty);
+  const character = deserializeCharacter(data.character);
+  if (!character || !character.alive) return res.status(400).json({ error: "No living character in that slot" });
+  if (!character.pendingMilestone) return res.status(400).json({ error: "No pending milestone to resolve" });
+
+  const result = resolveMilestone(character, dynasty, choiceId);
+  if (!result.success) return res.status(400).json({ error: result.log.join(" ") });
+
+  const { error: saveError } = await supabase
+    .from("dynasty_saves")
+    .update({ dynasty: serializeDynasty(dynasty), character: serializeCharacter(character), updated_at: new Date().toISOString() })
+    .eq("user_id", userId)
+    .eq("slot_index", slotIndex);
+  if (saveError) return res.status(500).json({ error: saveError.message });
+
+  res.json({ character, dynasty, log: result.log, success: true });
 });

@@ -57,6 +57,17 @@ export type Imprisonment = { reason: string; yearsRemaining: number };
 
 export type LogEntry = { age: number; year: number; text: string };
 
+// A branching historical milestone (Section 6's last bullet) that's fired
+// but not yet resolved - the turn engine stops advancing until the player
+// picks a choice. Not itemized in the handoff doc's illustrative literal,
+// same rationale as trackTier: needed to make the mechanic real.
+export type PendingMilestone = {
+  id: string;
+  label: string;
+  description: string;
+  choices: { id: string; label: string; description: string }[];
+};
+
 export const COURT_FACTIONS = ["The Old Guard", "The Reformers", "The War Party"] as const;
 export type CourtFaction = (typeof COURT_FACTIONS)[number];
 
@@ -106,6 +117,7 @@ export type Character = {
   factionStanding: Record<CourtFaction, number>;
   alive: boolean;
   deathCause?: string;
+  pendingMilestone?: PendingMilestone | null;
 
   // internal achievement/tracking flags
   _erasWitnessed: string[];

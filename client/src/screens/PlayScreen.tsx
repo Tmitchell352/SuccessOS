@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { DynastySave } from "@dynasty/shared";
-import { advanceTurn, getSlot } from "../api.js";
+import { advanceTurn, getSlot, resolveMilestone } from "../api.js";
 import { S } from "../theme.js";
 
 export function PlayScreen({
@@ -39,9 +39,43 @@ export function PlayScreen({
     }
   }
 
+  async function pickMilestoneChoice(choiceId: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await resolveMilestone(slotIndex, choiceId);
+      setSave((prev) => (prev ? { ...prev, character: result.character, dynasty: result.dynasty } : prev));
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   if (!save) return <div style={S.page}>{error ? <div style={S.error}>{error}</div> : <p>Loading...</p>}</div>;
   const c = save.character;
   if (!c) return <div style={S.page}>{"No living character - choose an heir."}</div>;
+
+  // A branching historical milestone (Section 6) pauses everything else
+  // until the player picks a side.
+  if (c.pendingMilestone) {
+    const m = c.pendingMilestone;
+    return (
+      <div style={S.page}>
+        <div style={S.card}>
+          <h1 style={S.h1}>{m.label}</h1>
+          <p>{m.description}</p>
+          {error && <div style={S.error}>{error}</div>}
+          {m.choices.map((choice) => (
+            <button key={choice.id} style={{ ...S.button, display: "block", width: "100%", textAlign: "left" }} disabled={busy} onClick={() => pickMilestoneChoice(choice.id)}>
+              <strong>{choice.label}</strong>
+              <div style={{ fontWeight: "normal", fontSize: "0.9rem" }}>{choice.description}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={S.page}>

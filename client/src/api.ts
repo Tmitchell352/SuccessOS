@@ -53,6 +53,13 @@ export async function chooseHeir(slotIndex: number, childName: string): Promise<
   return authedFetch(`/turn/${slotIndex}/choose-heir`, { method: "POST", body: JSON.stringify({ childName }) });
 }
 
+export async function resolveMilestone(
+  slotIndex: number,
+  choiceId: string
+): Promise<{ character: Character; dynasty: Dynasty; log: string[]; success: boolean }> {
+  return authedFetch(`/turn/${slotIndex}/resolve-milestone`, { method: "POST", body: JSON.stringify({ choiceId }) });
+}
+
 // --- Family (Section 8) ---
 
 export type SuitorProspect = {

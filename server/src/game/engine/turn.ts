@@ -1,9 +1,10 @@
 import type { Character, Dynasty } from "@dynasty/shared";
-import { EPOCH_BY_ID, PROPERTY_TIER_BY_ID, TRACK_SETS } from "@dynasty/shared";
+import { EPOCH_BY_ID, nearestEpoch, PROPERTY_TIER_BY_ID, TRACK_SETS } from "@dynasty/shared";
 import { rollMortality } from "./mortality.js";
 import { tickTrackMechanic } from "./tracks.js";
 import { tickGeopolitics } from "./geopolitics.js";
 import { tickFamily } from "./family.js";
+import { tickMilestones } from "./milestones.js";
 
 export type TurnResult = {
   character: Character;
@@ -42,6 +43,29 @@ export function advanceYear(character: Character, dynasty: Dynasty): TurnResult 
   // old-age decay.
   c.age += 1;
   c.year += 1;
+
+  // Epoch drift (Section 1: "the dynasty ... potentially spanning
+  // thousands of years and drifting across historical epochs as the
+  // in-game year advances"). Previously nothing ever moved epochId once a
+  // character was founded - nearestEpoch existed but was never called.
+  const currentEpoch = nearestEpoch(c.year);
+  if (currentEpoch.id !== c.epochId) {
+    c.epochId = currentEpoch.id;
+    if (!c._erasWitnessed.includes(currentEpoch.id)) c._erasWitnessed.push(currentEpoch.id);
+    log.push(`The age of ${currentEpoch.label} has arrived.`);
+  }
+
+  // Milestone check (Section 6's last bullet, see ./milestones.ts). A
+  // branching milestone pauses the turn here - everything below (family,
+  // geopolitics, track mechanics, mortality) waits until it's resolved via
+  // /turn/:slotIndex/resolve-milestone, so the world doesn't keep moving
+  // underneath an unmade decision.
+  const milestoneTick = tickMilestones(c, dynasty);
+  log.push(...milestoneTick.log);
+  if (milestoneTick.paused) {
+    c.log.push({ age: c.age, year: c.year, text: log.join(" ") });
+    return { character: c, dynasty, log, died: false };
+  }
 
   const track = trackDefFor(c);
   if (track && !c.retired) {
@@ -143,10 +167,11 @@ export function advanceYear(character: Character, dynasty: Dynasty): TurnResult 
     log.push(`Came of age and entered the ${set[trackId as keyof typeof set].label} track.`);
   }
 
-  // 12. Mortality roll, milestone check (TODO), specialization prompt
-  // (TODO), world event + nation-power drift. A scripted death (palace
-  // coup, military campaign) takes priority over the generic age/health
-  // roll.
+  // 12. Mortality roll, specialization prompt (TODO), world event +
+  // nation-power drift. (Milestone check already ran above, ahead of
+  // family/geopolitics/track ticks, since a branching one needs to pause
+  // everything else.) A scripted death (palace coup, military campaign)
+  // takes priority over the generic age/health roll.
   const cause = scriptedDeathCause ?? rollMortality(c);
   let died = false;
   if (cause) {

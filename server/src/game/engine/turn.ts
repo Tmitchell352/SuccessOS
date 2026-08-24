@@ -1,7 +1,7 @@
-import type { Character, Dynasty } from "@dynasty/shared";
+import type { Character, Dynasty, TrackId } from "@dynasty/shared";
 import { EPOCH_BY_ID, nearestEpoch, PROPERTY_TIER_BY_ID, TRACK_SETS } from "@dynasty/shared";
 import { rollMortality } from "./mortality.js";
-import { tickTrackMechanic } from "./tracks.js";
+import { applyFamilyTradition, tickTrackMechanic } from "./tracks.js";
 import { tickGeopolitics } from "./geopolitics.js";
 import { tickFamily } from "./family.js";
 import { tickMilestones } from "./milestones.js";
@@ -222,6 +222,8 @@ export function advanceYear(character: Character, dynasty: Dynasty): TurnResult 
     c.advisorName = advisor;
     remember(dynasty, advisor);
     log.push(`Came of age and entered the ${set[trackId as keyof typeof set].label} track, with ${advisor} appointed as their advisor.`);
+    const traditionLine = applyFamilyTradition(c, dynasty, c.trackId as TrackId);
+    if (traditionLine) log.push(traditionLine);
   }
 
   // Health warning (Section 9 step 12): a narrative-only signal when health

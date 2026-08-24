@@ -34,6 +34,7 @@ export async function createDynasty(params: {
   characterName?: string;
   motto?: string;
   victoryGoal?: "none" | "gen10" | "legacy300" | "legacy750";
+  tradition?: "none" | "military" | "scholarly" | "mercantile" | "political" | "devout";
 }): Promise<DynastySave> {
   const data = await authedFetch("/dynasties", { method: "POST", body: JSON.stringify(params) });
   return data.slot;

@@ -392,7 +392,7 @@ turnRouter.post("/:slotIndex/change-career", async (req, res) => {
   const character = deserializeCharacter(data.character);
   if (!character || !character.alive) return res.status(400).json({ error: "No living character in that slot" });
 
-  const result = changeCareer(character, trackId);
+  const result = changeCareer(character, dynasty, trackId);
   if (!result.success) return res.status(400).json({ error: result.log.join(" ") });
   character.log.push({ age: character.age, year: character.year, text: result.log.join(" ") });
 

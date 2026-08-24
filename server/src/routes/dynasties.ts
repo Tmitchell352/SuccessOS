@@ -1,8 +1,9 @@
 import { Router } from "express";
-import type { Dynasty, DynastySave, VictoryGoal } from "@dynasty/shared";
+import type { Dynasty, DynastySave, Tradition, VictoryGoal } from "@dynasty/shared";
 import { EPOCH_BY_ID } from "@dynasty/shared";
 
 const VICTORY_GOALS: VictoryGoal[] = ["none", "gen10", "legacy300", "legacy750"];
+const TRADITIONS: Tradition[] = ["none", "military", "scholarly", "mercantile", "political", "devout"];
 import type { AuthedRequest } from "../middleware/auth.js";
 import { requireAuth } from "../middleware/auth.js";
 import { clientForToken } from "../supabase.js";
@@ -49,13 +50,16 @@ dynastiesRouter.get("/", async (req, res) => {
 // POST /dynasties - create a new dynasty in the given slot with a founding character
 dynastiesRouter.post("/", async (req, res) => {
   const { userId, accessToken } = req as unknown as AuthedRequest;
-  const { slotIndex, motto, difficulty, tone, epochId, nation, characterName, victoryGoal } = req.body ?? {};
+  const { slotIndex, motto, difficulty, tone, epochId, nation, characterName, victoryGoal, tradition } = req.body ?? {};
   if (typeof slotIndex !== "number" || !epochId || !nation) {
     return res.status(400).json({ error: "slotIndex, epochId, and nation are required" });
   }
   if (!EPOCH_BY_ID[epochId]) return res.status(400).json({ error: `Unknown epoch ${epochId}` });
   if (victoryGoal !== undefined && !VICTORY_GOALS.includes(victoryGoal)) {
     return res.status(400).json({ error: `victoryGoal must be one of ${VICTORY_GOALS.join(", ")}` });
+  }
+  if (tradition !== undefined && !TRADITIONS.includes(tradition)) {
+    return res.status(400).json({ error: `tradition must be one of ${TRADITIONS.join(", ")}` });
   }
 
   let character;
@@ -67,6 +71,7 @@ dynastiesRouter.post("/", async (req, res) => {
 
   const dynasty: Dynasty = newDynasty(motto || `House of ${character.name.split(" ")[1] ?? character.name}`, difficulty || "standard", tone || "balanced");
   if (victoryGoal) dynasty.victoryGoal = victoryGoal;
+  if (tradition) dynasty.tradition = tradition;
   dynasty.currentId = character.id;
   dynasty.people[character.id] = toTreeRecord(character, null, 1);
   initRelations(character, dynasty);

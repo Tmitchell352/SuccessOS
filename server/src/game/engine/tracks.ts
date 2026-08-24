@@ -1,4 +1,4 @@
-import type { Character, Dynasty, TrackId } from "@dynasty/shared";
+import type { Character, Dynasty, Tradition, TrackId } from "@dynasty/shared";
 import { EPOCH_BY_ID, TRACK_SETS } from "@dynasty/shared";
 import { randomName } from "./factory.js";
 
@@ -230,6 +230,46 @@ export function tickTrackMechanic(c: Character, dynasty: Dynasty): TrackTickResu
 
 export type TrackActionResult = { log: string[]; success: boolean };
 
+// Family traditions (Section 5's "Cross-track systems": "chosen once at
+// founding — permanent bonus to all future descendants who settle into a
+// matching track"). Dynasty.tradition and Character._traditionAppliedTracks
+// have existed since the first commit, but nothing ever mapped a tradition
+// to a track or applied the bonus - the field was pure flavor text fed into
+// the AI prompt context and nothing else. Applied once per character (via
+// _traditionAppliedTracks) the first time they enter the matching track, so
+// switching away and back via Change Career doesn't double-dip.
+const TRADITION_TRACK: Record<Tradition, TrackId | null> = {
+  none: null,
+  military: "military",
+  scholarly: "academic",
+  mercantile: "commercial",
+  political: "political",
+  devout: "religious",
+};
+
+const TRADITION_BONUS: Record<Exclude<Tradition, "none">, Partial<Record<"influence" | "skill" | "wealth" | "health" | "popularity", number>>> = {
+  military: { skill: 8 },
+  scholarly: { skill: 8 },
+  mercantile: { wealth: 40 },
+  political: { influence: 8 },
+  devout: { popularity: 8 },
+};
+
+export function applyFamilyTradition(c: Character, dynasty: Dynasty, trackId: TrackId): string | null {
+  if (dynasty.tradition === "none") return null;
+  if (TRADITION_TRACK[dynasty.tradition] !== trackId) return null;
+  if (c._traditionAppliedTracks.includes(trackId)) return null;
+
+  c._traditionAppliedTracks.push(trackId);
+  const bonus = TRADITION_BONUS[dynasty.tradition];
+  if (bonus.influence) c.stats.influence = clamp(c.stats.influence + bonus.influence);
+  if (bonus.skill) c.stats.skill = clamp(c.stats.skill + bonus.skill);
+  if (bonus.wealth) c.stats.wealth = clamp(c.stats.wealth + bonus.wealth, 0, 999);
+  if (bonus.health) c.stats.health = clamp(c.stats.health + bonus.health);
+  if (bonus.popularity) c.stats.popularity = clamp(c.stats.popularity + bonus.popularity);
+  return `The family's ${dynasty.tradition} tradition carries forward - a real edge in this line of work.`;
+}
+
 // Specializations (Section 5's "Cross-track systems"): "3-4 specializations
 // chosen once per track (one-time stat perk), prompted the first time a
 // character (age 18+) has no specialization yet for their current track."
@@ -267,7 +307,7 @@ export function chooseSpecialization(c: Character, specializationId: string): Tr
 // former calling raises eyebrows) - but any specialization already earned
 // in a track is remembered on Character.specializations (keyed by trackId)
 // and still applies if the player switches back to it later.
-export function changeCareer(c: Character, newTrackId: string): TrackActionResult {
+export function changeCareer(c: Character, dynasty: Dynasty, newTrackId: string): TrackActionResult {
   if (c.age < 18) return { log: ["Too young to have a career yet."], success: false };
   if (c.trackId === newTrackId) return { log: ["Already on that track."], success: false };
 
@@ -282,8 +322,9 @@ export function changeCareer(c: Character, newTrackId: string): TrackActionResul
   c.stats.popularity = clamp(c.stats.popularity - 3);
 
   const label = set[newTrackId as TrackId].label;
-  return {
-    log: [oldLabel ? `Left ${oldLabel.toLowerCase()} behind to start over in ${label}.` : `Began a career in ${label}.`],
-    success: true,
-  };
+  const log = [oldLabel ? `Left ${oldLabel.toLowerCase()} behind to start over in ${label}.` : `Began a career in ${label}.`];
+  const traditionLine = applyFamilyTradition(c, dynasty, c.trackId as TrackId);
+  if (traditionLine) log.push(traditionLine);
+
+  return { log, success: true };
 }

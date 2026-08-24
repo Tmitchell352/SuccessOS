@@ -82,12 +82,19 @@ export function marry(character: Character, dynasty: Dynasty, suitor: SuitorPros
 
   const log = [`Married ${suitor.name}, who ${suitor.description}.`];
 
-  // Arranged-alliance marriage, tied to world relations (Section 8).
+  // Arranged-alliance marriage, tied to world relations (Section 8). Section
+  // 7 calls for "an explicit dowry payment" on top of the suitor's own
+  // wealthDelta (already framed as a personal dowry/bride-price by the AI
+  // prompt in eventGenerator.ts) - a political marriage carries its own,
+  // separate dowry, distinct from what this particular match would have
+  // brought on its own.
   if (arrangedWithNation) {
     dynasty.worldRelations[arrangedWithNation] = clamp((dynasty.worldRelations[arrangedWithNation] ?? 50) + 20);
     character.relations[arrangedWithNation] = dynasty.worldRelations[arrangedWithNation];
     character.stats.popularity = clamp(character.stats.popularity - 5);
-    log.push(`The marriage was arranged to strengthen ties with ${arrangedWithNation}.`);
+    const allianceDowry = 30 + randInt(0, 40);
+    character.stats.wealth = clamp(character.stats.wealth + allianceDowry, 0, 999);
+    log.push(`The marriage was arranged to strengthen ties with ${arrangedWithNation}, and came with an alliance dowry of ${allianceDowry} wealth.`);
   }
 
   return { log, success: true };
